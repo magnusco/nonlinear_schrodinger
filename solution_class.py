@@ -105,7 +105,7 @@ class Nonlin_Scrodinger_Solver:
 
     def cn_liearized_1(self):
         self.sol[0, :] = self.f1(self.xi)
-        A_const = self.tridiag(self.r / 2, 1.0j - self.r, + self.r / 2, self.M)
+        A_const = self.tridiag(self.r / 2, 1.0j - self.r, self.r / 2, self.M)
         B_const = self.tridiag(- self.r / 2, 1.0j + self.r, - self.r / 2, self.M)
         A_const[0, -1] = self.r / 2
         A_const[-1, 0] = self.r / 2
@@ -114,6 +114,7 @@ class Nonlin_Scrodinger_Solver:
 
         for i in range(0, self.N):
             abs = np.absolute(self.sol[i, 0:-1])
+            # Here there is a mistake, use the previous time-step which we do not have
             A = np.diag(3 * abs**2 * 0.0j - 2 * abs * np.absolute(self.sol[i - 1, 0:-1] * 1.0j), 0)
             B = np.diag(abs**2 * 0.0j, 0)
             A *= 0.5 * self.lmbda * self.k
@@ -128,7 +129,7 @@ class Nonlin_Scrodinger_Solver:
 
     def cn_liearized_2(self):
         self.sol[0, :] = self.f1(self.xi)
-        A = self.tridiag(self.r / 2, 1.0j - self.r, + self.r / 2, self.M)
+        A = self.tridiag(self.r / 2, 1.0j - self.r, self.r / 2, self.M)
         B_const = self.tridiag(- self.r / 2, 1.0j + self.r, - self.r / 2, self.M)
         A[0, -1] = self.r / 2
         A[-1, 0] = self.r / 2
@@ -138,11 +139,11 @@ class Nonlin_Scrodinger_Solver:
 
         for i in range(0, self.N):
             abs = np.absolute(self.sol[i, 0:-1])
-            B = np.diag(5 * abs**2 * 0.0j - 2 * abs * np.absolute(self.sol[i - 1, 0:-1]) * 1.0j, 0)
+            B = np.diag(5 * abs**2 * 0.0j - 2 * abs * np.absolute(self.sol[i - 1, 0:-1]) * 0.0j, 0)
             B *= 0.5 * self.lmbda * self.k
             B += B_const
             b = np.matmul(B, self.sol[i, 0:-1])
-            b -= 0.5 * self.lmbda * self.k * abs**2 * self.sol[i - 1, 0:-1]
+            b -= 0.5 * self.lmbda * self.k * np.multiply(abs**2, self.sol[i - 1, 0:-1])
             self.sol[i + 1, 0:-1] = linalg.spsolve(As, b)
         self.sol[:, -1] = self.sol[:, 0]
         return 0
@@ -163,9 +164,9 @@ if __name__ == '__main__':
     # cn_implicit.cn_implicit()
     # cn_implicit.plot()
 
-    cn_linearized_1 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 2, 200, 200, 5, 'cn_linearized.pkl')
-    cn_linearized_1.cn_liearized_1()
-    cn_linearized_1.plot()
+    # cn_linearized_1 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 2, 200, 200, 5, 'cn_linearized.pkl')
+    # cn_linearized_1.cn_liearized_1()
+    # cn_linearized_1.plot()
 
     cn_linearized_2 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 2, 200, 200, 5, 'cn_linearized.pkl')
     cn_linearized_2.cn_liearized_2()
