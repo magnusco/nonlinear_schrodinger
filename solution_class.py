@@ -27,6 +27,7 @@ class Nonlin_Scrodinger_Solver:
         self.exact = np.zeros((self.N + 1, self.M + 1), dtype=np.complex)
 
     # Useful functions.
+    # ------------------------------------------------------------------------------------------------------------------
     def write_sol_to_file(self):
         with open(self.filename, 'wb') as f:
             pickle.dump([self.sol, self.xi, self.ti, self.M, self.N, self.T], f)
@@ -122,6 +123,7 @@ class Nonlin_Scrodinger_Solver:
         return 0
 
     # Numerical methods:
+    # ------------------------------------------------------------------------------------------------------------------
     def cn_explicit_average(self):
         self.sol[0, :] = self.f1(self.xi)
         A = self.tridiag(self.r / 2, 1.0j - self.r, self.r / 2, self.M)
