@@ -1,5 +1,6 @@
 import numpy as np
 import pickle
+import math as m
 from scipy.sparse import linalg
 from scipy import sparse
 from scipy import optimize
@@ -17,8 +18,8 @@ class Nonlin_Scrodinger_Solver:
         self.N = N
         self.T = T
         self.h = (interval[1] - interval[0]) / M
-        self.k = T / N
-        self.r = self.k / self.h**2
+        self.k = T / N + 0.0j
+        self.r = self.k / self.h**2 + 0.0j
         self.xi = np.linspace(interval[0], interval[1], self.M + 1)
         self.ti = np.linspace(0, T, self.N + 1)
         self.sol = np.zeros((self.N + 1, self.M + 1), dtype=np.complex)
@@ -103,18 +104,17 @@ class Nonlin_Scrodinger_Solver:
                 return line_1, line_2,
 
             anim = animation.FuncAnimation(fig, animate, init_func=init,
-                                           frames=self.N, interval=20, blit=True)
+                                           frames=self.N, interval=10, blit=True)
         else:
-            line, = ax.plot([], [], lw=2)
+            line, = ax.plot([], [], 'r', lw=2, label="numerical")
             def init():
                 line.set_data([], [])
                 return line,
             def animate(i):
                 line.set_data(self.xi, self.sol[i])
                 return line,
-
             anim = animation.FuncAnimation(fig, animate, init_func=init,
-                                           frames=self.N, interval=20, blit=True)
+                                           frames=self.N, interval=10, blit=True)
 
         plt.xlabel(r"$x$")
         plt.ylabel(r"$Re(U)$")
@@ -134,7 +134,7 @@ class Nonlin_Scrodinger_Solver:
         B_const = 1.0j * self.r * B_const
         for i in range(0, self.N):
             abs = np.absolute(self.sol[i, 0:-1])
-            B = - 1.0j * self.k * self.lmbda * np.diag(abs**2 * 0.0j, 0)
+            B = - 1.0j * self.k * self.lmbda * np.diag(abs**2 + 0.0j, 0)
             B += B_const + np.identity(self.M)
             self.sol[i + 1, 0:-1] = np.matmul(B, self.sol[i, 0:-1])
         self.sol[:, -1] = self.sol[:, 0]
@@ -149,7 +149,7 @@ class Nonlin_Scrodinger_Solver:
         B_const = 1.0j * 2 * self.r * B_const
         for i in range(1, self.N):
             abs = np.absolute(self.sol[i, 0:-1])
-            B = - 1.0j * 2 * self.k * self.lmbda * np.diag(abs**2 * 0.0j, 0)
+            B = - 1.0j * 2 * self.k * self.lmbda * np.diag(abs**2 + 0.0j, 0)
             B += B_const
             self.sol[i + 1, 0:-1] = np.matmul(B, self.sol[i, 0:-1]) + self.sol[i - 1, 0:-1]
         self.sol[:, -1] = self.sol[:, 0]
@@ -166,7 +166,7 @@ class Nonlin_Scrodinger_Solver:
 
         for i in range(0, self.N):
             abs = np.absolute(self.sol[i, 0:-1])
-            B = np.diag(abs[0:-1]**2 * 0.0j, -1) + np.diag(abs[1:]**2 * 0.0j, 1)
+            B = np.diag(abs[0:-1]**2 + 0.0j, -1) + np.diag(abs[1:]**2 + 0.0j, 1)
             B[0, -1] = abs[-1]**2
             B[-1, 0] = abs[0]**2
             B *= self.lmbda * self.k * 0.5
@@ -189,7 +189,7 @@ class Nonlin_Scrodinger_Solver:
 
         for i in range(0, self.N):
             abs = np.absolute(self.sol[i, 0:-1])
-            B = np.diag(abs[0:-1]**2 * 0.0j, -1) + np.diag(abs[1:]**2 * 0.0j, 1)
+            B = np.diag(abs[0:-1]**2 + 0.0j, -1) + np.diag(abs[1:]**2 + 0.0j, 1)
             B[0, -1] = abs[-1]**2
             B[-1, 0] = abs[0]**2
             B *= self.lmbda * self.k * 0.5
@@ -212,13 +212,13 @@ class Nonlin_Scrodinger_Solver:
 
         for i in range(0, iterations):
             abs_prev = np.absolute(self.sol[i, 0:-1])
-            B = 0.5 * self.lmbda * self.k * np.diag(abs_prev**2 * 0.0j, 0)
+            B = 0.5 * self.lmbda * self.k * np.diag(abs_prev**2 + 0.0j, 0)
             B += B_const
             b = np.matmul(B, self.sol[i, 0:-1])
 
             def F(U_next):
                 abs_next = np.absolute(U_next)
-                A = 0.5 * self.lmbda * self.k * np.diag(abs_next ** 2 * 0.0j, 0)
+                A = 0.5 * self.lmbda * self.k * np.diag(abs_next ** 2 + 0.0j, 0)
                 A += A_const
                 a = np.matmul(A, U_next)
                 return a - b
@@ -239,8 +239,8 @@ class Nonlin_Scrodinger_Solver:
 
         for i in range(1, self.N):
             abs = np.absolute(self.sol[i, 0:-1])
-            A = np.diag(3 * abs**2 * 0.0j - 2 * abs * np.absolute(self.sol[i - 1, 0:-1] * 1.0j), 0)
-            B = np.diag(abs**2 * 0.0j, 0)
+            A = np.diag(3 * abs**2 - 2 * abs * np.absolute(self.sol[i - 1, 0:-1]) + 0.0j, 0)
+            B = np.diag(abs**2 + 0.0j, 0)
             A *= 0.5 * self.lmbda * self.k
             B *= 0.5 * self.lmbda * self.k
             A += A_const
@@ -264,7 +264,7 @@ class Nonlin_Scrodinger_Solver:
 
         for i in range(1, self.N):
             abs = np.absolute(self.sol[i, 0:-1])
-            B = np.diag(5 * abs**2 * 0.0j - 2 * abs * np.absolute(self.sol[i - 1, 0:-1]) * 0.0j, 0)
+            B = np.diag(5 * abs**2 + 0.0j - 2 * abs * np.absolute(self.sol[i - 1, 0:-1]) + 0.0j, 0)
             B *= 0.5 * self.lmbda * self.k
             B += B_const
             b = np.matmul(B, self.sol[i, 0:-1])
@@ -276,9 +276,10 @@ class Nonlin_Scrodinger_Solver:
 
 if __name__ == '__main__':
 
-    central_time = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 1, 100, 10000, 5, 'central_time.pkl')
+    central_time = Nonlin_Scrodinger_Solver([-np.pi, np.pi], -5, 100, 10000, 5, 'central_time.pkl')
     central_time.central_time()
     central_time.calculate_analytic()
+    central_time.plot_2D_final()
     central_time.plot()
     central_time.plot_analytic()
 
@@ -287,13 +288,16 @@ if __name__ == '__main__':
     # cn_explicit_average.calculate_analytic()
     # cn_explicit_average.animate_solution(True)
 
-    # cn_implicit_builtin_solver = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 1, 200, 200, 5, 'cn_implicit.pkl')
+    # cn_implicit_builtin_solver = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 2, 100, 100, 5, 'cn_implicit.pkl')
     # cn_implicit_builtin_solver.cn_implicit_builtin_solver()
+    # cn_implicit_builtin_solver.plot()
     # cn_implicit_builtin_solver.calculate_analytic()
+    # cn_implicit_builtin_solver.plot_analytic()
     # cn_implicit_builtin_solver.animate_solution(True)
 
-    # cn_linearized_1 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 1, 200, 200, 5, 'cn_linearized.pkl')
+    # cn_linearized_1 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 10, 200, 200, 5, 'cn_linearized.pkl')
     # cn_linearized_1.cn_liearized_1()
+    # cn_linearized_1.plot()
     # cn_linearized_1.calculate_analytic()
     # cn_linearized_1.animate_solution(True)
 
