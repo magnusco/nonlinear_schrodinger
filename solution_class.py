@@ -155,27 +155,6 @@ class Nonlin_Scrodinger_Solver:
         self.sol[:, -1] = self.sol[:, 0]
         return 0
 
-    def cn_explicit_average(self):
-        self.sol[0, :] = self.f1(self.xi)
-        B_const = self.tridiag(- self.r / 2, 1.0j + self.r, - self.r / 2, self.M)
-        A[0, -1] = self.r / 2
-        A[-1, 0] = self.r / 2
-        As = sparse.csr_matrix(A)
-        B_const[0, -1] = - self.r / 2
-        B_const[-1, 0] = - self.r / 2
-
-        for i in range(0, self.N):
-            abs = np.absolute(self.sol[i, 0:-1])
-            B = np.diag(abs[0:-1]**2 + 0.0j, -1) + np.diag(abs[1:]**2 + 0.0j, 1)
-            B[0, -1] = abs[-1]**2
-            B[-1, 0] = abs[0]**2
-            B *= self.lmbda * self.k * 0.5
-            B += B_const
-            b = np.matmul(B, self.sol[i, 0:-1])
-            self.sol[i + 1, 0:-1] = linalg.spsolve(As, b)
-        self.sol[:, -1] = self.sol[:, 0]
-        return 0
-
 
     def hopscotch(self):
         self.sol[0, :] = self.f1(self.xi)
@@ -212,18 +191,22 @@ class Nonlin_Scrodinger_Solver:
 
         for i in range(0, iterations):
             abs_prev = np.absolute(self.sol[i, 0:-1])
-            B = 0.5 * self.lmbda * self.k * np.diag(abs_prev**2 + 0.0j, 0)
+            B = 0.5 * self.lmbda * self.k * np.diag(abs_prev**2, 0)
             B += B_const
             b = np.matmul(B, self.sol[i, 0:-1])
 
             def F(U_next):
-                abs_next = np.absolute(U_next)
-                A = 0.5 * self.lmbda * self.k * np.diag(abs_next ** 2 + 0.0j, 0)
+                U = U_next[0:self.M] + 1.0j * U_next[self.M:]
+                abs_next = np.absolute(U)
+                A = -0.5 * self.lmbda * self.k * np.diag(abs_next**2, 0)
                 A += A_const
-                a = np.matmul(A, U_next)
-                return a - b
+                a = np.matmul(A, U)
+                U_next[0:self.M] = np.real(a - b)
+                U_next[self.M:] = np.imag(a - b)
+                return U_next
 
-            self.sol[i + 1, 0:-1] = optimize.newton_krylov(F, self.sol[i, 0:-1])
+            real = optimize.fixed_point(F, np.concatenate((np.real(self.sol[i, 0:-1]), np.imag(self.sol[i, 0:-1])), axis=0))
+            self.sol[i + 1, 0:-1] = real[0: self.M] + 1.0j * real[self.M:]
         self.sol[:, -1] = self.sol[:, 0]
         return 0
 
@@ -276,30 +259,25 @@ class Nonlin_Scrodinger_Solver:
 
 if __name__ == '__main__':
 
-    central_time = Nonlin_Scrodinger_Solver([-np.pi, np.pi], -5, 100, 10000, 5, 'central_time.pkl')
-    central_time.central_time()
-    central_time.calculate_analytic()
-    central_time.plot_2D_final()
-    central_time.plot()
-    central_time.plot_analytic()
+    # central_time = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 2, 100, 10000, 5, 'central_time.pkl')
+    # central_time.central_time()
+    # central_time.calculate_analytic()
+    # central_time.plot()
+    # central_time.plot_analytic()
 
-    # cn_explicit_average = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 1, 200, 200, 5, 'cn_explicit_average.pkl')
-    # cn_explicit_average.cn_explicit_average()
-    # cn_explicit_average.calculate_analytic()
-    # cn_explicit_average.animate_solution(True)
-
-    # cn_implicit_builtin_solver = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 2, 100, 100, 5, 'cn_implicit.pkl')
+    # cn_implicit_builtin_solver = Nonlin_Scrodinger_Solver([-np.pi, np.pi], -2, 100, 100, 5, 'cn_implicit.pkl')
     # cn_implicit_builtin_solver.cn_implicit_builtin_solver()
     # cn_implicit_builtin_solver.plot()
     # cn_implicit_builtin_solver.calculate_analytic()
     # cn_implicit_builtin_solver.plot_analytic()
     # cn_implicit_builtin_solver.animate_solution(True)
 
-    # cn_linearized_1 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 10, 200, 200, 5, 'cn_linearized.pkl')
-    # cn_linearized_1.cn_liearized_1()
-    # cn_linearized_1.plot()
-    # cn_linearized_1.calculate_analytic()
-    # cn_linearized_1.animate_solution(True)
+    cn_linearized_1 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], -2, 200, 200, 5, 'cn_linearized.pkl')
+    cn_linearized_1.cn_liearized_1()
+    cn_linearized_1.plot()
+    cn_linearized_1.calculate_analytic()
+    cn_linearized_1.plot_analytic()
+    #cn_linearized_1.animate_solution(True)
 
     # cn_linearized_2 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 1, 200, 200, 5, 'cn_linearized.pkl')
     # cn_linearized_2.cn_liearized_2()
