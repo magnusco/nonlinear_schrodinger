@@ -24,6 +24,7 @@ class Nonlin_Scrodinger_Solver:
         self.sol = np.zeros((self.N + 1, self.M + 1), dtype=np.complex)
         self.filename = filename
         self.deviation_from_analytic = 0
+        self.exact = np.zeros((self.N + 1, self.M + 1), dtype=np.complex)
 
     # Useful functions.
     def write_sol_to_file(self):
@@ -44,13 +45,13 @@ class Nonlin_Scrodinger_Solver:
         # return np.sin(x)
         return np.exp(1.0j * x)
 
-    def analytic_1(self, x, t):
-        X, T = np.meshgrid(x, t)
-        return np.exp(1.0j * (X - T * (self.lmbda + 1)))
+    def calculate_analytic(self):
+        X, T = np.meshgrid(self.xi, self.ti)
+        self.exact = np.exp(1.0j * (X - T * (self.lmbda + 1)))
+        return 0
 
     def find_deviation_from_analytic(self):
-        U_exact = self.analytic_1(self.xi, self.ti)
-        self.deviation_from_analytic = np.max(np.absolute(self.sol - U_exact))
+        self.deviation_from_analytic = np.max(np.absolute(self.sol - self.exact))
         return 0
 
     def plot_solution(self, sol, xi, ti, title=None):
@@ -67,8 +68,7 @@ class Nonlin_Scrodinger_Solver:
         plt.show()
 
     def plot_analytic(self):
-        sol = self.analytic_1(self.xi, self.ti)
-        self.plot_solution(np.real(sol), self.xi, self.ti, "Real Part of Analytic Solution")
+        self.plot_solution(np.real(self.exact), self.xi, self.ti, "Real Part of Analytic Solution")
         #self.plot_solution(np.imag(sol), self.xi, self.ti, "Imaginary Part of Analytic Solution")
         return 0
 
@@ -78,14 +78,48 @@ class Nonlin_Scrodinger_Solver:
         return 0
 
     def plot_2D_final(self):
-        exact = self.analytic_1(self.xi, self.ti)
         plt.plot(self.xi, np.real(self.sol[-1]), 'b', label="approximation")
-        plt.plot(self.xi, np.real(exact[-1]), 'r', label="exact")
+        plt.plot(self.xi, np.real(self.exact[-1]), 'r', label="exact")
         plt.grid(True)
         plt.xlabel(r"$x$")
         plt.ylabel(r"$U_{m}^{N+1}$")
         plt.legend()
         plt.show()
+
+    def animate_solution(self, exact=False):
+        fig = plt.figure()
+        ax = plt.axes(xlim=(self.space[0], self.space[1]), ylim=(-2, 2))
+        if exact == True:
+            line_1, = ax.plot([], [], 'b', lw=2, label="numerical")
+            line_2, = ax.plot([], [], 'r', lw=2, label="exact")
+            def init():
+                line_1.set_data([], [])
+                line_2.set_data([], [])
+                return line_1, line_2,
+            def animate(i):
+                line_1.set_data(self.xi, np.real(self.sol[i]))
+                line_2.set_data(self.xi, np.real(self.exact[i]))
+                return line_1, line_2,
+
+            anim = animation.FuncAnimation(fig, animate, init_func=init,
+                                           frames=self.N, interval=20, blit=True)
+        else:
+            line, = ax.plot([], [], lw=2)
+            def init():
+                line.set_data([], [])
+                return line,
+            def animate(i):
+                line.set_data(self.xi, self.sol[i])
+                return line,
+
+            anim = animation.FuncAnimation(fig, animate, init_func=init,
+                                           frames=self.N, interval=20, blit=True)
+
+        plt.xlabel(r"$x$")
+        plt.ylabel(r"$Re(U)$")
+        plt.legend()
+        plt.show()
+        return 0
 
     # Numerical methods:
     def cn_explicit_average(self):
@@ -186,25 +220,25 @@ class Nonlin_Scrodinger_Solver:
 
 
 if __name__ == '__main__':
-    cn_explicit_average = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 1, 200, 200, 5, 'cn_explicit_average.pkl')
-    cn_explicit_average.cn_explicit_average()
-    cn_explicit_average.plot_2D_final()
-    cn_explicit_average.plot()
-    cn_explicit_average.plot_analytic()
+    # cn_explicit_average = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 1, 200, 200, 5, 'cn_explicit_average.pkl')
+    # cn_explicit_average.cn_explicit_average()
+    # cn_explicit_average.calculate_analytic()
+    # cn_explicit_average.animate_solution(True)
 
-    """cn_implicit_builtin_solver = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 1, 200, 200, 5, 'cn_implicit.pkl')
-    cn_implicit_builtin_solver.cn_implicit_builtin_solver()
-    cn_implicit_builtin_solver.find_deviation_from_analytic()
-    print(cn_implicit_builtin_solver.deviation_from_analytic)
-    cn_implicit_builtin_solver.plot()
+    # cn_implicit_builtin_solver = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 1, 200, 200, 5, 'cn_implicit.pkl')
+    # cn_implicit_builtin_solver.cn_implicit_builtin_solver()
+    # cn_implicit_builtin_solver.calculate_analytic()
+    # cn_implicit_builtin_solver.animate_solution(True)
 
-    cn_linearized_1 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 1, 200, 200, 5, 'cn_linearized.pkl')
-    cn_linearized_1.cn_liearized_1()
-    cn_linearized_1.plot()
+    # cn_linearized_1 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 1, 200, 200, 5, 'cn_linearized.pkl')
+    # cn_linearized_1.cn_liearized_1()
+    # cn_linearized_1.calculate_analytic()
+    # cn_linearized_1.animate_solution(True)
 
-    cn_linearized_2 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 1, 200, 200, 5, 'cn_linearized.pkl')
-    cn_linearized_2.cn_liearized_2()
-    cn_linearized_2.plot()"""
+    # cn_linearized_2 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 1, 200, 200, 5, 'cn_linearized.pkl')
+    # cn_linearized_2.cn_liearized_2()
+    # cn_linearized_2.calculate_analytic()
+    # cn_linearized_2.animate_solution(True)
 
 
 
