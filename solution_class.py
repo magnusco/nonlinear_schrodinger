@@ -27,7 +27,7 @@ class Nonlin_Scrodinger_Solver:
         self.deviation_from_analytic = 0
         self.exact = np.zeros((self.N + 1, self.M + 1), dtype=np.complex)
 
-    # Useful functions:
+    # Functions:
     # ------------------------------------------------------------------------------------------------------------------
     def write_sol_to_file(self):
         with open(self.filename, 'wb') as f:
@@ -126,13 +126,15 @@ class Nonlin_Scrodinger_Solver:
     # ------------------------------------------------------------------------------------------------------------------
 
     # Does not work..
-    def forward_euler(self):
+    def forward_euler(self, iter=None):
+        if iter == None:
+            iter = self.N
         self.sol[0, :] = self.f1(self.xi)
         B_const = self.tridiag(1, -2, 1, self.M)
         B_const[0, -1] = 1
         B_const[-1, 0] = 1
         B_const = 1.0j * self.r * B_const
-        for i in range(0, self.N):
+        for i in range(0, iter):
             abs = np.absolute(self.sol[i, 0:-1])
             B = - 1.0j * self.k * self.lmbda * np.diag(abs**2 + 0.0j, 0)
             B += B_const + np.identity(self.M)
@@ -142,7 +144,7 @@ class Nonlin_Scrodinger_Solver:
 
     def central_time(self):
         self.sol[0, :] = self.f1(self.xi)
-        self.cn_implicit_builtin_solver(1)
+        self.forward_euler(1)
         B_const = self.tridiag(1, -2, 1, self.M)
         B_const[0, -1] = 1
         B_const[-1, 0] = 1
@@ -212,7 +214,7 @@ class Nonlin_Scrodinger_Solver:
 
     def cn_liearized_1(self):
         self.sol[0, :] = self.f1(self.xi)
-        self.cn_implicit_builtin_solver(1)
+        self.forward_euler(1)
         A_const = self.tridiag(self.r / 2, 1.0j - self.r, self.r / 2, self.M)
         B_const = self.tridiag(- self.r / 2, 1.0j + self.r, - self.r / 2, self.M)
         A_const[0, -1] = self.r / 2
@@ -224,7 +226,7 @@ class Nonlin_Scrodinger_Solver:
             abs = np.absolute(self.sol[i, 0:-1])
             A = np.diag(3 * abs**2 - 2 * abs * np.absolute(self.sol[i - 1, 0:-1]) + 0.0j, 0)
             B = np.diag(abs**2 + 0.0j, 0)
-            A *= 0.5 * self.lmbda * self.k
+            A *= -0.5 * self.lmbda * self.k
             B *= 0.5 * self.lmbda * self.k
             A += A_const
             B += B_const
@@ -236,7 +238,7 @@ class Nonlin_Scrodinger_Solver:
 
     def cn_liearized_2(self):
         self.sol[0, :] = self.f1(self.xi)
-        self.cn_implicit_builtin_solver(1)
+        self.forward_euler(1)
         A = self.tridiag(self.r / 2, 1.0j - self.r, self.r / 2, self.M)
         B_const = self.tridiag(- self.r / 2, 1.0j + self.r, - self.r / 2, self.M)
         A[0, -1] = self.r / 2
@@ -272,16 +274,18 @@ if __name__ == '__main__':
     # cn_implicit_builtin_solver.plot_analytic()
     # cn_implicit_builtin_solver.animate_solution(True)
 
-    cn_linearized_1 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], -2, 200, 200, 5, 'cn_linearized.pkl')
+    cn_linearized_1 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 2, 200, 200, 5, 'cn_linearized.pkl')
     cn_linearized_1.cn_liearized_1()
-    cn_linearized_1.plot()
     cn_linearized_1.calculate_analytic()
+    cn_linearized_1.plot()
     cn_linearized_1.plot_analytic()
-    #cn_linearized_1.animate_solution(True)
+    cn_linearized_1.animate_solution(True)
 
-    # cn_linearized_2 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 1, 200, 200, 5, 'cn_linearized.pkl')
+    # cn_linearized_2 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], -2, 200, 200, 5, 'cn_linearized.pkl')
     # cn_linearized_2.cn_liearized_2()
     # cn_linearized_2.calculate_analytic()
+    # cn_linearized_2.plot()
+    # cn_linearized_2.plot_analytic()
     # cn_linearized_2.animate_solution(True)
 
 
