@@ -26,7 +26,7 @@ class Nonlin_Scrodinger_Solver:
         self.deviation_from_analytic = 0
         self.exact = np.zeros((self.N + 1, self.M + 1), dtype=np.complex)
 
-    # Useful functions.
+    # Useful functions:
     # ------------------------------------------------------------------------------------------------------------------
     def write_sol_to_file(self):
         with open(self.filename, 'wb') as f:
@@ -124,7 +124,46 @@ class Nonlin_Scrodinger_Solver:
 
     # Numerical methods:
     # ------------------------------------------------------------------------------------------------------------------
+
+    # Does not work..
+    def forward_euler(self):
+        self.sol[0, :] = self.f1(self.xi)
+        B_const = self.tridiag(1, -2, 1, self.M)
+        B_const[0, -1] = 1
+        B_const[-1, 0] = 1
+        B_const = 1.0j * self.r * B_const
+        for i in range(0, self.N):
+            abs = np.absolute(self.sol[i, 0:-1])
+            B = - 1.0j * self.k * self.lmbda * np.diag(abs**2 * 0.0j, 0)
+            B += B_const + np.identity(self.M)
+            self.sol[i + 1, 0:-1] = np.matmul(B, self.sol[i, 0:-1])
+        self.sol[:, -1] = self.sol[:, 0]
+        return 0
+
     def cn_explicit_average(self):
+        self.sol[0, :] = self.f1(self.xi)
+        A = self.tridiag(self.r / 2, 1.0j - self.r, self.r / 2, self.M)
+        B_const = self.tridiag(- self.r / 2, 1.0j + self.r, - self.r / 2, self.M)
+        A[0, -1] = self.r / 2
+        A[-1, 0] = self.r / 2
+        As = sparse.csr_matrix(A)
+        B_const[0, -1] = - self.r / 2
+        B_const[-1, 0] = - self.r / 2
+
+        for i in range(0, self.N):
+            abs = np.absolute(self.sol[i, 0:-1])
+            B = np.diag(abs[0:-1]**2 * 0.0j, -1) + np.diag(abs[1:]**2 * 0.0j, 1)
+            B[0, -1] = abs[-1]**2
+            B[-1, 0] = abs[0]**2
+            B *= self.lmbda * self.k * 0.5
+            B += B_const
+            b = np.matmul(B, self.sol[i, 0:-1])
+            self.sol[i + 1, 0:-1] = linalg.spsolve(As, b)
+        self.sol[:, -1] = self.sol[:, 0]
+        return 0
+
+
+    def hopscotch(self):
         self.sol[0, :] = self.f1(self.xi)
         A = self.tridiag(self.r / 2, 1.0j - self.r, self.r / 2, self.M)
         B_const = self.tridiag(- self.r / 2, 1.0j + self.r, - self.r / 2, self.M)
@@ -222,6 +261,7 @@ class Nonlin_Scrodinger_Solver:
 
 
 if __name__ == '__main__':
+
     # cn_explicit_average = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 1, 200, 200, 5, 'cn_explicit_average.pkl')
     # cn_explicit_average.cn_explicit_average()
     # cn_explicit_average.calculate_analytic()
