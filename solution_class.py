@@ -140,9 +140,23 @@ class Nonlin_Scrodinger_Solver:
         self.sol[:, -1] = self.sol[:, 0]
         return 0
 
+    def central_time(self):
+        self.sol[0, :] = self.f1(self.xi)
+        self.cn_implicit_builtin_solver(1)
+        B_const = self.tridiag(1, -2, 1, self.M)
+        B_const[0, -1] = 1
+        B_const[-1, 0] = 1
+        B_const = 1.0j * 2 * self.r * B_const
+        for i in range(1, self.N):
+            abs = np.absolute(self.sol[i, 0:-1])
+            B = - 1.0j * 2 * self.k * self.lmbda * np.diag(abs**2 * 0.0j, 0)
+            B += B_const
+            self.sol[i + 1, 0:-1] = np.matmul(B, self.sol[i, 0:-1]) + self.sol[i - 1, 0:-1]
+        self.sol[:, -1] = self.sol[:, 0]
+        return 0
+
     def cn_explicit_average(self):
         self.sol[0, :] = self.f1(self.xi)
-        A = self.tridiag(self.r / 2, 1.0j - self.r, self.r / 2, self.M)
         B_const = self.tridiag(- self.r / 2, 1.0j + self.r, - self.r / 2, self.M)
         A[0, -1] = self.r / 2
         A[-1, 0] = self.r / 2
@@ -261,6 +275,12 @@ class Nonlin_Scrodinger_Solver:
 
 
 if __name__ == '__main__':
+
+    central_time = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 1, 100, 10000, 5, 'central_time.pkl')
+    central_time.central_time()
+    central_time.calculate_analytic()
+    central_time.plot()
+    central_time.plot_analytic()
 
     # cn_explicit_average = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 1, 200, 200, 5, 'cn_explicit_average.pkl')
     # cn_explicit_average.cn_explicit_average()
