@@ -125,16 +125,16 @@ class Nonlin_Scrodinger_Solver:
     # Numerical methods:
     # ------------------------------------------------------------------------------------------------------------------
 
-    # Does not work..
-    def forward_euler(self, iter=None):
-        if iter == None:
-            iter = self.N
+    # Very unstable.
+    def forward_euler(self, iterations=None):
+        if iterations == None:
+            iterations = self.N
         self.sol[0, :] = self.f1(self.xi)
         B_const = self.tridiag(1, -2, 1, self.M)
         B_const[0, -1] = 1
         B_const[-1, 0] = 1
         B_const = 1.0j * self.r * B_const
-        for i in range(0, iter):
+        for i in range(0, iterations):
             abs = np.absolute(self.sol[i, 0:-1])
             B = - 1.0j * self.k * self.lmbda * np.diag(abs**2 + 0.0j, 0)
             B += B_const + np.identity(self.M)
@@ -142,6 +142,7 @@ class Nonlin_Scrodinger_Solver:
         self.sol[:, -1] = self.sol[:, 0]
         return 0
 
+    # Should work.
     def central_time(self):
         self.sol[0, :] = self.f1(self.xi)
         self.forward_euler(1)
@@ -157,29 +158,41 @@ class Nonlin_Scrodinger_Solver:
         self.sol[:, -1] = self.sol[:, 0]
         return 0
 
+    # Does not work (yet).
+    # Need even number of space steps.
+    def hopscotch(self, iterations=None):
+        if iterations == None:
+            iterations = self.N
 
-    def hopscotch(self):
         self.sol[0, :] = self.f1(self.xi)
-        A = self.tridiag(self.r / 2, 1.0j - self.r, self.r / 2, self.M)
-        B_const = self.tridiag(- self.r / 2, 1.0j + self.r, - self.r / 2, self.M)
-        A[0, -1] = self.r / 2
-        A[-1, 0] = self.r / 2
-        As = sparse.csr_matrix(A)
-        B_const[0, -1] = - self.r / 2
-        B_const[-1, 0] = - self.r / 2
+        B_const = self.tridiag(1.0j * self.r, 1 - 2 * 1.0j * self.r, 1.0j * self.r, self.M)
+        B_const[0, -1] = 1.0j * self.r
+        B_const[-1, 0] = 1.0j * self.r
 
-        for i in range(0, self.N):
-            abs = np.absolute(self.sol[i, 0:-1])
-            B = np.diag(abs[0:-1]**2 + 0.0j, -1) + np.diag(abs[1:]**2 + 0.0j, 1)
-            B[0, -1] = abs[-1]**2
-            B[-1, 0] = abs[0]**2
-            B *= self.lmbda * self.k * 0.5
+        for i in range(0, iterations):
+            iter_remainder = i % 2
+            # inv_iter_remainder = np.logical_not(iter_remainder).astype(int)
+
+            abs_prev = np.absolute(self.sol[i, 0:-1])
+            B = np.diag(abs_prev[0:-1]**2 + 0.0j, -1) + np.diag(abs_prev[1:]**2 + 0.0j, 1)
+            B[0, -1] = abs_prev[-1]**2
+            B[-1, 0] = abs_prev[0]**2
+            B *= 0.5 * self.lmbda * self.k
             B += B_const
-            b = np.matmul(B, self.sol[i, 0:-1])
-            self.sol[i + 1, 0:-1] = linalg.spsolve(As, b)
+            self.sol[i + 1, 0:-1] = np.matmul(B, self.sol[i, 0:-1])
+
+            abs_next = np.absolute(self.sol[i + 1, 0:-1])
+            A = np.diag(abs_next[0:-1]**2 + 0.0j, -1) + np.diag(abs_next[1:]**2 + 0.0j, 1)
+            A[0, -1] = abs_next[-1]**2
+            A[-1, 0] = abs_next[0]**2
+            A *= 0.5 * self.lmbda * self.k
+            temp = np.matmul(B_const, self.sol[i, 0:-1]) + np.matmul(A, self.sol[i + 1, 0:-1])
+            self.sol[i + 1, iter_remainder:-1:2] = temp[iter_remainder::2]
+
         self.sol[:, -1] = self.sol[:, 0]
         return 0
 
+    # Does not work.
     def cn_implicit_builtin_solver(self, iterations=None):
         if iterations == None:
             iterations = self.N
@@ -212,6 +225,7 @@ class Nonlin_Scrodinger_Solver:
         self.sol[:, -1] = self.sol[:, 0]
         return 0
 
+    # Works.
     def cn_liearized_1(self):
         self.sol[0, :] = self.f1(self.xi)
         self.forward_euler(1)
@@ -236,6 +250,7 @@ class Nonlin_Scrodinger_Solver:
         self.sol[:, -1] = self.sol[:, 0]
         return 0
 
+    # Works.
     def cn_liearized_2(self):
         self.sol[0, :] = self.f1(self.xi)
         self.forward_euler(1)
@@ -267,6 +282,11 @@ if __name__ == '__main__':
     # central_time.plot()
     # central_time.plot_analytic()
 
+    hopscotch = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 2, 100, 100, 5, 'hopscotch.pkl')
+    hopscotch.hopscotch()
+    hopscotch.calculate_analytic()
+    hopscotch.plot()
+
     # cn_implicit_builtin_solver = Nonlin_Scrodinger_Solver([-np.pi, np.pi], -2, 100, 100, 5, 'cn_implicit.pkl')
     # cn_implicit_builtin_solver.cn_implicit_builtin_solver()
     # cn_implicit_builtin_solver.plot()
@@ -274,12 +294,12 @@ if __name__ == '__main__':
     # cn_implicit_builtin_solver.plot_analytic()
     # cn_implicit_builtin_solver.animate_solution(True)
 
-    cn_linearized_1 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 2, 200, 200, 5, 'cn_linearized.pkl')
-    cn_linearized_1.cn_liearized_1()
-    cn_linearized_1.calculate_analytic()
-    cn_linearized_1.plot()
-    cn_linearized_1.plot_analytic()
-    cn_linearized_1.animate_solution(True)
+    # cn_linearized_1 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 2, 200, 200, 5, 'cn_linearized.pkl')
+    # cn_linearized_1.cn_liearized_1()
+    # cn_linearized_1.calculate_analytic()
+    # cn_linearized_1.plot()
+    # cn_linearized_1.plot_analytic()
+    # cn_linearized_1.animate_solution(True)
 
     # cn_linearized_2 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], -2, 200, 200, 5, 'cn_linearized.pkl')
     # cn_linearized_2.cn_liearized_2()
@@ -287,6 +307,39 @@ if __name__ == '__main__':
     # cn_linearized_2.plot()
     # cn_linearized_2.plot_analytic()
     # cn_linearized_2.animate_solution(True)
+
+
+    """def hopscotch(self, iterations=None):
+        if iterations == None:
+            iterations = self.N
+
+        self.sol[0, :] = self.f1(self.xi)
+        B_const = self.tridiag(1.0j * self.r, 1 - 2 * 1.0j * self.r, 1.0j * self.r, self.M)
+        B_const[0, -1] = 1.0j * self.r
+        B_const[-1, 0] = 1.0j * self.r
+
+        for i in range(0, iterations):
+            iter_remainder = i % 2
+            inv_iter_remainder = np.logical_not(iter_remainder).astype(int)
+
+            abs_prev = np.absolute(self.sol[i, iter_remainder:-1:2])
+            B = np.diag(abs_prev[0:-1]**2 + 0.0j, -1) + np.diag(abs_prev[1:]**2 + 0.0j, 1)
+            B[0, -1] = abs_prev[-1]**2
+            B[-1, 0] = abs_prev[0]**2
+            B *= 0.5 * self.lmbda * self.k
+            B += B_const
+            self.sol[i + 1, inv_iter_remainder:-1:2] = np.matmul(B, self.sol[i, inv_iter_remainder:-1:2])
+
+            abs_next = np.absolute(self.sol[i + 1, inv_iter_remainder:-1:2])
+            A = np.diag(abs_next[0:-1]**2 + 0.0j, -1) + np.diag(abs_next[1:]**2 + 0.0j, 1)
+            A[0, -1] = abs_next[-1]**2
+            A[-1, 0] = abs_next[0]**2
+            A *= 0.5 * self.lmbda * self.k
+            A += B_const
+            self.sol[i + 1, iter_remainder:-1:2] = np.matmul(B, self.sol[i, iter_remainder:-1:2])
+
+        self.sol[:, -1] = self.sol[:, 0]
+        return 0"""
 
 
 
