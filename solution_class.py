@@ -138,7 +138,7 @@ class Nonlin_Scrodinger_Solver:
             abs = np.absolute(self.sol[i, 0:-1])
             B = - 1.0j * self.k * self.lmbda * np.diag(abs**2 + 0.0j, 0)
             B += B_const + np.identity(self.M)
-            self.sol[i + 1, 0:-1] = np.matmul(B, self.sol[i, 0:-1])
+            self.sol[i + 1, 0:-1] = np.matmul(B_const, self.sol[i, 0:-1])
         self.sol[:, -1] = self.sol[:, 0]
         return 0
 
@@ -171,23 +171,41 @@ class Nonlin_Scrodinger_Solver:
 
         for i in range(0, iterations):
             iter_remainder = i % 2
-            # inv_iter_remainder = np.logical_not(iter_remainder).astype(int)
+            inv_iter_remainder = np.logical_not(iter_remainder).astype(int)
 
             abs_prev = np.absolute(self.sol[i, 0:-1])
             B = np.diag(abs_prev[0:-1]**2 + 0.0j, -1) + np.diag(abs_prev[1:]**2 + 0.0j, 1)
             B[0, -1] = abs_prev[-1]**2
             B[-1, 0] = abs_prev[0]**2
-            B *= 0.5 * self.lmbda * self.k
-            B += B_const
-            self.sol[i + 1, 0:-1] = np.matmul(B, self.sol[i, 0:-1])
+            B *= (- 0.5) * 1.0j * self.lmbda * self.k
+            print(np.round(np.absolute(B[inv_iter_remainder::2]), 2))
+            print()
+            B = B[iter_remainder::2] + B_const[iter_remainder::2]
+            print(np.round(np.absolute(B), 2))
+            self.sol[i + 1, iter_remainder:-1:2] = np.matmul(B, self.sol[i, 0:-1])
+
+            for j in self.sol[i]:
+                print(np.round(j, 1), "   ", np.abs(j))
+            print()
+
+            for j in self.sol[i+1]:
+                print(np.round(j, 1), "   ", np.round(np.abs(j), 2))
+            print()
 
             abs_next = np.absolute(self.sol[i + 1, 0:-1])
             A = np.diag(abs_next[0:-1]**2 + 0.0j, -1) + np.diag(abs_next[1:]**2 + 0.0j, 1)
             A[0, -1] = abs_next[-1]**2
             A[-1, 0] = abs_next[0]**2
-            A *= 0.5 * self.lmbda * self.k
-            temp = np.matmul(B_const, self.sol[i, 0:-1]) + np.matmul(A, self.sol[i + 1, 0:-1])
-            self.sol[i + 1, iter_remainder:-1:2] = temp[iter_remainder::2]
+            A *= (- 0.5) * 1.0j * self.lmbda * self.k
+            print(np.round(np.absolute(A[inv_iter_remainder::2]), 2))
+            print()
+            A = A[inv_iter_remainder::2] + B_const[inv_iter_remainder::2]
+            print(np.round(np.absolute(A), 2))
+            self.sol[i + 1, inv_iter_remainder:-1:2] = np.matmul(A, self.sol[i + 1, 0:-1])
+
+            for j in self.sol[i+1]:
+                print(np.round(j, 1), "    ", np.round(np.abs(j), 2))
+            exit()
 
         self.sol[:, -1] = self.sol[:, 0]
         return 0
@@ -275,6 +293,11 @@ class Nonlin_Scrodinger_Solver:
 
 
 if __name__ == '__main__':
+    # forward_euler = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 2, 10, 10000, 5, 'forward_euler.pkl')
+    # forward_euler.forward_euler()
+    # forward_euler.calculate_analytic()
+    # forward_euler.plot()
+    # forward_euler.plot_analytic()
 
     # central_time = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 2, 100, 10000, 5, 'central_time.pkl')
     # central_time.central_time()
@@ -282,15 +305,16 @@ if __name__ == '__main__':
     # central_time.plot()
     # central_time.plot_analytic()
 
-    hopscotch = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 2, 100, 100, 5, 'hopscotch.pkl')
+    hopscotch = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 2, 10, 100, 5, 'hopscotch.pkl')
     hopscotch.hopscotch()
     hopscotch.calculate_analytic()
     hopscotch.plot()
+    #hopscotch.plot_analytic()
 
     # cn_implicit_builtin_solver = Nonlin_Scrodinger_Solver([-np.pi, np.pi], -2, 100, 100, 5, 'cn_implicit.pkl')
     # cn_implicit_builtin_solver.cn_implicit_builtin_solver()
-    # cn_implicit_builtin_solver.plot()
     # cn_implicit_builtin_solver.calculate_analytic()
+    # cn_implicit_builtin_solver.plot()
     # cn_implicit_builtin_solver.plot_analytic()
     # cn_implicit_builtin_solver.animate_solution(True)
 
@@ -307,39 +331,4 @@ if __name__ == '__main__':
     # cn_linearized_2.plot()
     # cn_linearized_2.plot_analytic()
     # cn_linearized_2.animate_solution(True)
-
-
-    """def hopscotch(self, iterations=None):
-        if iterations == None:
-            iterations = self.N
-
-        self.sol[0, :] = self.f1(self.xi)
-        B_const = self.tridiag(1.0j * self.r, 1 - 2 * 1.0j * self.r, 1.0j * self.r, self.M)
-        B_const[0, -1] = 1.0j * self.r
-        B_const[-1, 0] = 1.0j * self.r
-
-        for i in range(0, iterations):
-            iter_remainder = i % 2
-            inv_iter_remainder = np.logical_not(iter_remainder).astype(int)
-
-            abs_prev = np.absolute(self.sol[i, iter_remainder:-1:2])
-            B = np.diag(abs_prev[0:-1]**2 + 0.0j, -1) + np.diag(abs_prev[1:]**2 + 0.0j, 1)
-            B[0, -1] = abs_prev[-1]**2
-            B[-1, 0] = abs_prev[0]**2
-            B *= 0.5 * self.lmbda * self.k
-            B += B_const
-            self.sol[i + 1, inv_iter_remainder:-1:2] = np.matmul(B, self.sol[i, inv_iter_remainder:-1:2])
-
-            abs_next = np.absolute(self.sol[i + 1, inv_iter_remainder:-1:2])
-            A = np.diag(abs_next[0:-1]**2 + 0.0j, -1) + np.diag(abs_next[1:]**2 + 0.0j, 1)
-            A[0, -1] = abs_next[-1]**2
-            A[-1, 0] = abs_next[0]**2
-            A *= 0.5 * self.lmbda * self.k
-            A += B_const
-            self.sol[i + 1, iter_remainder:-1:2] = np.matmul(B, self.sol[i, iter_remainder:-1:2])
-
-        self.sol[:, -1] = self.sol[:, 0]
-        return 0"""
-
-
 
