@@ -158,8 +158,8 @@ class Nonlin_Scrodinger_Solver:
         self.sol[:, -1] = self.sol[:, 0]
         return 0
 
-    # Does not work (yet).
-    # Need even number of space steps.
+    # Works.
+    # Need even number of space steps, and more time steps than space steps.
     def hopscotch(self, iterations=None):
         if iterations == None:
             iterations = self.N
@@ -168,6 +168,9 @@ class Nonlin_Scrodinger_Solver:
         B_const = self.tridiag(1.0j * self.r, 1 - 2 * 1.0j * self.r, 1.0j * self.r, self.M)
         B_const[0, -1] = 1.0j * self.r
         B_const[-1, 0] = 1.0j * self.r
+        A_const = self.tridiag(1.0j * self.r, 0, 1.0j * self.r, self.M)
+        A_const[0, -1] = 1.0j * self.r
+        A_const[-1, 0] = 1.0j * self.r
 
         for i in range(0, iterations):
             iter_remainder = i % 2
@@ -178,34 +181,16 @@ class Nonlin_Scrodinger_Solver:
             B[0, -1] = abs_prev[-1]**2
             B[-1, 0] = abs_prev[0]**2
             B *= (- 0.5) * 1.0j * self.lmbda * self.k
-            print(np.round(np.absolute(B[inv_iter_remainder::2]), 2))
-            print()
             B = B[iter_remainder::2] + B_const[iter_remainder::2]
-            print(np.round(np.absolute(B), 2))
             self.sol[i + 1, iter_remainder:-1:2] = np.matmul(B, self.sol[i, 0:-1])
-
-            for j in self.sol[i]:
-                print(np.round(j, 1), "   ", np.abs(j))
-            print()
-
-            for j in self.sol[i+1]:
-                print(np.round(j, 1), "   ", np.round(np.abs(j), 2))
-            print()
 
             abs_next = np.absolute(self.sol[i + 1, 0:-1])
             A = np.diag(abs_next[0:-1]**2 + 0.0j, -1) + np.diag(abs_next[1:]**2 + 0.0j, 1)
             A[0, -1] = abs_next[-1]**2
             A[-1, 0] = abs_next[0]**2
             A *= (- 0.5) * 1.0j * self.lmbda * self.k
-            print(np.round(np.absolute(A[inv_iter_remainder::2]), 2))
-            print()
-            A = A[inv_iter_remainder::2] + B_const[inv_iter_remainder::2]
-            print(np.round(np.absolute(A), 2))
-            self.sol[i + 1, inv_iter_remainder:-1:2] = np.matmul(A, self.sol[i + 1, 0:-1])
-
-            for j in self.sol[i+1]:
-                print(np.round(j, 1), "    ", np.round(np.abs(j), 2))
-            exit()
+            A = A[inv_iter_remainder::2] + A_const[inv_iter_remainder::2]
+            self.sol[i + 1, inv_iter_remainder:-1:2] = (np.matmul(A, self.sol[i + 1, 0:-1]) +  + self.sol[i, inv_iter_remainder:-1:2]) / (1 + 2 * 1.0j * self.r)
 
         self.sol[:, -1] = self.sol[:, 0]
         return 0
@@ -305,11 +290,11 @@ if __name__ == '__main__':
     # central_time.plot()
     # central_time.plot_analytic()
 
-    hopscotch = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 2, 10, 100, 5, 'hopscotch.pkl')
-    hopscotch.hopscotch()
-    hopscotch.calculate_analytic()
-    hopscotch.plot()
-    #hopscotch.plot_analytic()
+    # hopscotch = Nonlin_Scrodinger_Solver([-np.pi, np.pi], -2, 100, 400, 5, 'hopscotch.pkl')
+    # hopscotch.hopscotch()
+    # hopscotch.calculate_analytic()
+    # hopscotch.plot()
+    # hopscotch.plot_analytic()
 
     # cn_implicit_builtin_solver = Nonlin_Scrodinger_Solver([-np.pi, np.pi], -2, 100, 100, 5, 'cn_implicit.pkl')
     # cn_implicit_builtin_solver.cn_implicit_builtin_solver()
