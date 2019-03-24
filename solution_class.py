@@ -9,7 +9,7 @@ from matplotlib import animation
 from mpl_toolkits.mplot3d import Axes3D
 
 
-class Nonlin_Scrodinger_Solver:
+class Nonlin_Schrodinger_Solver:
 
     def __init__(self, interval, lmbda, M, N, T, filename):
         self.space = interval
@@ -43,13 +43,16 @@ class Nonlin_Scrodinger_Solver:
         e = np.ones(n)
         return a * np.diag(e[1:], -1) + b * np.diag(e) + c * np.diag(e[1:], 1)
 
-    def f1(self, x):
-        # return np.sin(x)
-        return np.exp(1.0j * x)
+    def f(self, x):
+        # return np.exp(1.0j * x)
+        return self.analytic_1(x, np.zeros(np.shape(x)))
+
+    def analytic_1(self, x, t):
+        return np.exp(1.0j * (x - t * (self.lmbda + 1)))
 
     def calculate_analytic(self):
         X, T = np.meshgrid(self.xi, self.ti)
-        self.exact = np.exp(1.0j * (X - T * (self.lmbda + 1)))
+        self.exact = self.analytic_1(X, T)
         return 0
 
     def find_deviation_from_analytic(self):
@@ -129,7 +132,7 @@ class Nonlin_Scrodinger_Solver:
     def forward_euler(self, iterations=None):
         if iterations == None:
             iterations = self.N
-        self.sol[0, :] = self.f1(self.xi)
+        self.sol[0, :] = self.f(self.xi)
         B_const = self.tridiag(1, -2, 1, self.M)
         B_const[0, -1] = 1
         B_const[-1, 0] = 1
@@ -144,7 +147,7 @@ class Nonlin_Scrodinger_Solver:
 
     # Should work.
     def central_time(self):
-        self.sol[0, :] = self.f1(self.xi)
+        self.sol[0, :] = self.f(self.xi)
         self.forward_euler(1)
         B_const = self.tridiag(1, -2, 1, self.M)
         B_const[0, -1] = 1
@@ -158,13 +161,13 @@ class Nonlin_Scrodinger_Solver:
         self.sol[:, -1] = self.sol[:, 0]
         return 0
 
-    # Works.
-    # Need even number of space steps, and more time steps than space steps.
+    # Works, migth be a subtle error in the boundary stuff.
+    # Need even number of space steps.
     def hopscotch(self, iterations=None):
         if iterations == None:
             iterations = self.N
 
-        self.sol[0, :] = self.f1(self.xi)
+        self.sol[0, :] = self.f(self.xi)
         B_const = self.tridiag(1.0j * self.r, 1 - 2 * 1.0j * self.r, 1.0j * self.r, self.M)
         B_const[0, -1] = 1.0j * self.r
         B_const[-1, 0] = 1.0j * self.r
@@ -190,7 +193,7 @@ class Nonlin_Scrodinger_Solver:
             A[-1, 0] = abs_next[0]**2
             A *= (- 0.5) * 1.0j * self.lmbda * self.k
             A = A[inv_iter_remainder::2] + A_const[inv_iter_remainder::2]
-            self.sol[i + 1, inv_iter_remainder:-1:2] = (np.matmul(A, self.sol[i + 1, 0:-1]) +  + self.sol[i, inv_iter_remainder:-1:2]) / (1 + 2 * 1.0j * self.r)
+            self.sol[i + 1, inv_iter_remainder:-1:2] = (np.matmul(A, self.sol[i + 1, 0:-1]) + self.sol[i, inv_iter_remainder:-1:2]) / (1 + 2 * 1.0j * self.r)
 
         self.sol[:, -1] = self.sol[:, 0]
         return 0
@@ -199,7 +202,7 @@ class Nonlin_Scrodinger_Solver:
     def cn_implicit_builtin_solver(self, iterations=None):
         if iterations == None:
             iterations = self.N
-        self.sol[0, :] = self.f1(self.xi)
+        self.sol[0, :] = self.f(self.xi)
         A_const = self.tridiag(self.r / 2, 1.0j - self.r, self.r / 2, self.M)
         B_const = self.tridiag(- self.r / 2, 1.0j + self.r, - self.r / 2, self.M)
         A_const[0, -1] = self.r / 2
@@ -230,8 +233,8 @@ class Nonlin_Scrodinger_Solver:
 
     # Works.
     def cn_liearized_1(self):
-        self.sol[0, :] = self.f1(self.xi)
-        self.forward_euler(1)
+        self.sol[0, :] = self.f(self.xi)
+        self.cn_implicit_builtin_solver(1)
         A_const = self.tridiag(self.r / 2, 1.0j - self.r, self.r / 2, self.M)
         B_const = self.tridiag(- self.r / 2, 1.0j + self.r, - self.r / 2, self.M)
         A_const[0, -1] = self.r / 2
@@ -255,7 +258,7 @@ class Nonlin_Scrodinger_Solver:
 
     # Works.
     def cn_liearized_2(self):
-        self.sol[0, :] = self.f1(self.xi)
+        self.sol[0, :] = self.f(self.xi)
         self.forward_euler(1)
         A = self.tridiag(self.r / 2, 1.0j - self.r, self.r / 2, self.M)
         B_const = self.tridiag(- self.r / 2, 1.0j + self.r, - self.r / 2, self.M)
@@ -278,42 +281,42 @@ class Nonlin_Scrodinger_Solver:
 
 
 if __name__ == '__main__':
-    # forward_euler = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 2, 10, 10000, 5, 'forward_euler.pkl')
-    # forward_euler.forward_euler()
-    # forward_euler.calculate_analytic()
-    # forward_euler.plot()
-    # forward_euler.plot_analytic()
+    forward_euler = Nonlin_Schrodinger_Solver([-np.pi, np.pi], 2, 10, 10000, 5, 'forward_euler.pkl')
+    forward_euler.forward_euler()
+    forward_euler.calculate_analytic()
+    forward_euler.plot()
+    forward_euler.plot_analytic()
 
-    # central_time = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 2, 100, 10000, 5, 'central_time.pkl')
-    # central_time.central_time()
-    # central_time.calculate_analytic()
-    # central_time.plot()
-    # central_time.plot_analytic()
+    central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], 1, 10, 100, 5, 'central_time.pkl')
+    central_time.central_time()
+    central_time.calculate_analytic()
+    central_time.plot()
+    central_time.plot_analytic()
 
-    # hopscotch = Nonlin_Scrodinger_Solver([-np.pi, np.pi], -2, 100, 400, 5, 'hopscotch.pkl')
-    # hopscotch.hopscotch()
-    # hopscotch.calculate_analytic()
-    # hopscotch.plot()
-    # hopscotch.plot_analytic()
+    hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], 2, 200, 200, 5, 'hopscotch.pkl')
+    hopscotch.hopscotch()
+    hopscotch.calculate_analytic()
+    hopscotch.plot()
+    hopscotch.plot_analytic()
 
-    # cn_implicit_builtin_solver = Nonlin_Scrodinger_Solver([-np.pi, np.pi], -2, 100, 100, 5, 'cn_implicit.pkl')
-    # cn_implicit_builtin_solver.cn_implicit_builtin_solver()
-    # cn_implicit_builtin_solver.calculate_analytic()
-    # cn_implicit_builtin_solver.plot()
-    # cn_implicit_builtin_solver.plot_analytic()
-    # cn_implicit_builtin_solver.animate_solution(True)
+    cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], 2, 100, 100, 0.1, 'cn_implicit.pkl')
+    cn_implicit_builtin_solver.cn_implicit_builtin_solver()
+    cn_implicit_builtin_solver.calculate_analytic()
+    cn_implicit_builtin_solver.plot()
+    cn_implicit_builtin_solver.plot_analytic()
+    cn_implicit_builtin_solver.animate_solution(True)
 
-    # cn_linearized_1 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], 2, 200, 200, 5, 'cn_linearized.pkl')
-    # cn_linearized_1.cn_liearized_1()
-    # cn_linearized_1.calculate_analytic()
-    # cn_linearized_1.plot()
-    # cn_linearized_1.plot_analytic()
-    # cn_linearized_1.animate_solution(True)
+    cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], 1, 200, 200, 5, 'cn_linearized.pkl')
+    cn_linearized_1.cn_liearized_1()
+    cn_linearized_1.calculate_analytic()
+    cn_linearized_1.plot()
+    cn_linearized_1.plot_analytic()
+    cn_linearized_1.animate_solution(True)
 
-    # cn_linearized_2 = Nonlin_Scrodinger_Solver([-np.pi, np.pi], -2, 200, 200, 5, 'cn_linearized.pkl')
-    # cn_linearized_2.cn_liearized_2()
-    # cn_linearized_2.calculate_analytic()
-    # cn_linearized_2.plot()
-    # cn_linearized_2.plot_analytic()
-    # cn_linearized_2.animate_solution(True)
+    cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -2, 200, 200, 5, 'cn_linearized.pkl')
+    cn_linearized_2.cn_liearized_2()
+    cn_linearized_2.calculate_analytic()
+    cn_linearized_2.plot()
+    cn_linearized_2.plot_analytic()
+    cn_linearized_2.animate_solution(True)
 
