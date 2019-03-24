@@ -44,11 +44,17 @@ class Nonlin_Schrodinger_Solver:
         return a * np.diag(e[1:], -1) + b * np.diag(e) + c * np.diag(e[1:], 1)
 
     def f(self, x):
-        # return np.exp(1.0j * x)
         return self.analytic_1(x, np.zeros(np.shape(x)))
 
     def analytic_1(self, x, t):
-        return np.exp(1.0j * (x - t * (self.lmbda + 1)))
+        #return np.exp(1.0j * (x - t * (self.lmbda + 1)))
+        t -= self.T / 2
+        a = 1
+        b = 1
+        theta = a**2 * b * np.sqrt(2 - b**2) * t
+        c = (2 * b**2 * np.cosh(theta) + 2 * 1.0j * b * np.sqrt(2 - b**2) * np.sinh(theta)) / \
+            (2 * np.cosh(theta) - np.sqrt(2) * np.sqrt(2 - b**2) * np.cos(a * b * x)) - 1
+        return c * a * np.exp(1.0j * a**2 * t)
 
     def calculate_analytic(self):
         X, T = np.meshgrid(self.xi, self.ti)
@@ -141,7 +147,7 @@ class Nonlin_Schrodinger_Solver:
             abs = np.absolute(self.sol[i, 0:-1])
             B = - 1.0j * self.k * self.lmbda * np.diag(abs**2 + 0.0j, 0)
             B += B_const + np.identity(self.M)
-            self.sol[i + 1, 0:-1] = np.matmul(B_const, self.sol[i, 0:-1])
+            self.sol[i + 1, 0:-1] = np.matmul(B, self.sol[i, 0:-1])
         self.sol[:, -1] = self.sol[:, 0]
         return 0
 
@@ -234,7 +240,7 @@ class Nonlin_Schrodinger_Solver:
     # Works.
     def cn_liearized_1(self):
         self.sol[0, :] = self.f(self.xi)
-        self.cn_implicit_builtin_solver(1)
+        self.forward_euler(1)
         A_const = self.tridiag(self.r / 2, 1.0j - self.r, self.r / 2, self.M)
         B_const = self.tridiag(- self.r / 2, 1.0j + self.r, - self.r / 2, self.M)
         A_const[0, -1] = self.r / 2
@@ -281,42 +287,42 @@ class Nonlin_Schrodinger_Solver:
 
 
 if __name__ == '__main__':
-    forward_euler = Nonlin_Schrodinger_Solver([-np.pi, np.pi], 2, 10, 10000, 5, 'forward_euler.pkl')
-    forward_euler.forward_euler()
-    forward_euler.calculate_analytic()
-    forward_euler.plot()
-    forward_euler.plot_analytic()
+    # forward_euler = Nonlin_Schrodinger_Solver([-np.pi, np.pi], 2, 10, 10000, 5, 'forward_euler.pkl')
+    # forward_euler.forward_euler()
+    # forward_euler.calculate_analytic()
+    # forward_euler.plot()
+    # forward_euler.plot_analytic()
 
-    central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], 1, 10, 100, 5, 'central_time.pkl')
-    central_time.central_time()
-    central_time.calculate_analytic()
-    central_time.plot()
-    central_time.plot_analytic()
+    # central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], 1, 10, 100, 5, 'central_time.pkl')
+    # central_time.central_time()
+    # central_time.calculate_analytic()
+    # central_time.plot()
+    # central_time.plot_analytic()
 
-    hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], 2, 200, 200, 5, 'hopscotch.pkl')
-    hopscotch.hopscotch()
-    hopscotch.calculate_analytic()
-    hopscotch.plot()
-    hopscotch.plot_analytic()
+    # hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], 2, 200, 200, 5, 'hopscotch.pkl')
+    # hopscotch.hopscotch()
+    # hopscotch.calculate_analytic()
+    # hopscotch.plot()
+    # hopscotch.plot_analytic()
 
-    cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], 2, 100, 100, 0.1, 'cn_implicit.pkl')
-    cn_implicit_builtin_solver.cn_implicit_builtin_solver()
-    cn_implicit_builtin_solver.calculate_analytic()
-    cn_implicit_builtin_solver.plot()
-    cn_implicit_builtin_solver.plot_analytic()
-    cn_implicit_builtin_solver.animate_solution(True)
+    # cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], 2, 100, 100, 0.1, 'cn_implicit.pkl')
+    # cn_implicit_builtin_solver.cn_implicit_builtin_solver()
+    # cn_implicit_builtin_solver.calculate_analytic()
+    # cn_implicit_builtin_solver.plot()
+    # cn_implicit_builtin_solver.plot_analytic()
+    # cn_implicit_builtin_solver.animate_solution(True)
 
-    cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], 1, 200, 200, 5, 'cn_linearized.pkl')
+    cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 500, 500, 10, 'cn_linearized.pkl')
     cn_linearized_1.cn_liearized_1()
     cn_linearized_1.calculate_analytic()
     cn_linearized_1.plot()
     cn_linearized_1.plot_analytic()
     cn_linearized_1.animate_solution(True)
 
-    cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -2, 200, 200, 5, 'cn_linearized.pkl')
-    cn_linearized_2.cn_liearized_2()
-    cn_linearized_2.calculate_analytic()
-    cn_linearized_2.plot()
-    cn_linearized_2.plot_analytic()
-    cn_linearized_2.animate_solution(True)
+    # cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -2, 200, 200, 5, 'cn_linearized.pkl')
+    # cn_linearized_2.cn_liearized_2()
+    # cn_linearized_2.calculate_analytic()
+    # cn_linearized_2.plot()
+    # cn_linearized_2.plot_analytic()
+    # cn_linearized_2.animate_solution(True)
 
