@@ -22,7 +22,7 @@ class Nonlin_Schrodinger_Solver:
         self.N = N
         self.T = T
         self.h = (interval[1] - interval[0]) / M
-        self.k = T / N + 0.0j
+        self.k = T / N
         self.r = self.k / self.h**2 + 0.0j
         self.xi = np.linspace(interval[0], interval[1], self.M + 1)
         self.ti = np.linspace(0, T, self.N + 1)
@@ -42,15 +42,18 @@ class Nonlin_Schrodinger_Solver:
             sol, xi, ti, M, N, T = pickle.load(f)
         return sol, xi, ti, M, N, T
 
-    def set_new_params(self, M, N, T):
-        self.M = M
-        self.N = N
-        self.T = T
-        self.h = (self.space[1] - self.space[0]) / M
-        self.k = T / N + 0.0j
+    def set_new_params(self, M=None, N=None, T=None):
+        if M != None:
+            self.M = M
+        if N != None:
+            self.N = N
+        if T != None:
+            self.T = T
+        self.h = (self.space[1] - self.space[0]) / self.M
+        self.k = self.T / self.N
         self.r = self.k / self.h ** 2 + 0.0j
         self.xi = np.linspace(self.space[0], self.space[1], self.M + 1)
-        self.ti = np.linspace(0, T, self.N + 1)
+        self.ti = np.linspace(0, self.T, self.N + 1)
         self.sol = np.zeros((self.N + 1, self.M + 1), dtype=np.complex)
         self.exact = np.zeros((self.N + 1, self.M + 1), dtype=np.complex)
         return 0
@@ -237,14 +240,14 @@ class Nonlin_Schrodinger_Solver:
 
         for i in range(0, iterations):
             abs_prev = np.absolute(self.sol[i, 0:-1])
-            B = 0.5 * self.lmbda * self.k * np.diag(abs_prev**2, 0)
+            B = 0.5 * self.lmbda * self.k * np.diag(abs_prev**2 + 0.0j, 0)
             B += B_const
             b = np.matmul(B, self.sol[i, 0:-1])
 
             def F(U):
                 folded_U = U[0:self.M] + 1.0j * U[self.M:]
                 abs_next = np.absolute(folded_U)
-                A = -0.5 * self.lmbda * self.k * np.diag(abs_next**2, 0)
+                A = -0.5 * self.lmbda * self.k * np.diag(abs_next**2 + 0.0j, 0)
                 A += A_const
                 a = np.matmul(A, folded_U)
                 return np.concatenate((np.real(a - b), np.imag(a - b)), axis=0)
@@ -307,10 +310,7 @@ class Nonlin_Schrodinger_Solver:
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-
-def convergence_order():
-    # Order of convergence in space:
-
+def convergence_order_space():
     M = 10
     iter = 4
 
@@ -322,10 +322,15 @@ def convergence_order():
     cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 400, 5)
 
     method_collection = [central_time, hopscotch, cn_implicit_builtin_solver, cn_linearized_1, cn_linearized_2]
+    method_colors = ['b', 'r', 'g', 'cyan', 'deeppink']
+    method_lables = ["Central time", "Hopscotch", "Crank-Nicolson", "Linearized CN, real", "Linearized CN, complex"]
     number_of_methods = 5
 
-    errors = np.zeros((5, iter))
-    stepsizes = np.zeros((5, iter))
+    for method in method_collection:
+        method.calculate_analytic()
+
+    errors_space = np.zeros((5, iter))
+    h = np.zeros((5, iter))
 
     for i in range(0, iter):
         central_time.central_time()
@@ -336,20 +341,70 @@ def convergence_order():
         M *= 2
         for j in range(0, number_of_methods):
             method_collection[j].calculate_analytic()
-            errors[j, i] = np.max(np.absolute(method_collection[j].exact - method_collection[j].sol))
-            stepsizes[j, i] = method_collection[j].h
-            method_collection[j].set_new_params(M, method_collection[j].N, method_collection[j].T)
+            errors_space[j, i] = np.max(np.absolute(method_collection[j].exact - method_collection[j].sol))
+            h[j, i] = method_collection[j].h
+            method_collection[j].set_new_params(M)
 
     for j in range(0, number_of_methods):
-        slope, intercept, r_value, p_value, std_err = stats.linregress(np.log(stepsizes[j]), np.log(errors[j]))
-        plt.plot(stepsizes, errors, 'ok')
-        plt.plot(stepsizes[j], np.exp(intercept) * stepsizes[j] ** slope, 'r', label=r"Convergence $\approx$" + str(round(slope, 2)))
+        slope, intercept, r_value, p_value, std_err = stats.linregress(np.log(h[j]), np.log(errors_space[j]))
+        plt.plot(h[j], np.exp(intercept) * h[j] ** slope,
+                 method_colors[j], label=method_lables[j] + r" , order $\approx$" + str(round(slope, 2)))
     plt.yscale('log')
     plt.grid(True, 'both')
     plt.title("Convergence plot")
     plt.xscale('log')
-    plt.xlabel("Stepsize")
+    plt.xlabel(r"$h$")
     plt.ylabel(r"$||e_h||_{max}$")
+    plt.legend()
+    plt.show()
+    return 0
+
+def convergence_order_time():
+    M = 100
+    iter = 5
+    lmbda = -1
+
+    central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 10000, 5)
+    hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 1000, 5)
+    cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 400, 5)
+    cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 400, 5)
+    cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 400, 5)
+
+    method_collection = [central_time, hopscotch, cn_implicit_builtin_solver, cn_linearized_1, cn_linearized_2]
+    method_colors = ['b', 'r', 'g', 'cyan', 'deeppink']
+    method_lables = ["Central time", "Hopscotch", "Crank-Nicolson", "Linearized CN, real", "Linearized CN, complex"]
+    number_of_methods = 5
+
+    errors_time = np.zeros((5, iter))
+    k = np.zeros((5, iter))
+
+    for method in method_collection:
+        method.calculate_analytic()
+
+    for i in range(0, iter):
+        central_time.central_time()
+        hopscotch.hopscotch()
+        cn_implicit_builtin_solver.cn_implicit_builtin_solver()
+        cn_linearized_1.cn_liearized_1()
+        cn_linearized_2.cn_liearized_2()
+        for j in range(0, number_of_methods):
+            method_collection[j].calculate_analytic()
+            errors_time[j, i] = np.max(np.absolute(method_collection[j].exact - method_collection[j].sol))
+            method_collection[j].set_new_params(N=(method_collection[j].N * 2))
+            k[j, i] = method_collection[j].k
+    print(errors_time)
+    print()
+    print(k)
+
+    for j in range(0, number_of_methods):
+        slope, intercept, r_value, p_value, std_err = stats.linregress(np.log(k[j]), np.log(errors_time[j]))
+        plt.plot(k[j], np.exp(intercept) * k[j] ** slope, method_colors[j], label=method_lables[j] + r" , order $\approx$" + str(round(slope, 2)))
+    plt.yscale('log')
+    plt.grid(True, 'both')
+    plt.title("Convergence plot")
+    plt.xscale('log')
+    plt.xlabel(r"$h$")
+    plt.ylabel(r"$||e_{k}||_{max}$")
     plt.legend()
     plt.show()
     return 0
@@ -366,7 +421,7 @@ if __name__ == '__main__':
     # forward_euler.plot()
     # forward_euler.plot_analytic()
 
-    # central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], 1, 10, 100, 5, 'central_time.pkl')
+    # central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 400, 10000, 5, 'central_time.pkl')
     # central_time.central_time()
     # central_time.calculate_analytic()
     # central_time.plot()
@@ -385,7 +440,7 @@ if __name__ == '__main__':
     # cn_implicit_builtin_solver.plot_analytic()
     # cn_implicit_builtin_solver.animate_solution(True)
 
-    # cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], 2, 200, 200, 5, 'cn_linearized.pkl')
+    # cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 200, 200, 5, 'cn_linearized.pkl')
     # cn_linearized_1.cn_liearized_1()
     # cn_linearized_1.calculate_analytic()
     # cn_linearized_1.plot()
@@ -399,7 +454,7 @@ if __name__ == '__main__':
     # cn_linearized_2.plot_analytic()
     # cn_linearized_2.animate_solution(True)
 
-    convergence_order()
+    convergence_order_time()
 
 
 
