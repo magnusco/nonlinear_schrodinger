@@ -329,10 +329,11 @@ def convergence_order_space():
     for method in method_collection:
         method.calculate_analytic()
 
-    errors_space = np.zeros((5, iter))
-    h = np.zeros((5, iter))
+    errors_space = np.zeros((number_of_methods, iter))
+    h = np.zeros((number_of_methods, iter))
 
     for i in range(0, iter):
+        print(i)
         central_time.central_time()
         hopscotch.hopscotch()
         cn_implicit_builtin_solver.cn_implicit_builtin_solver()
@@ -351,38 +352,37 @@ def convergence_order_space():
                  method_colors[j], label=method_lables[j] + r" , order $\approx$" + str(round(slope, 2)))
     plt.yscale('log')
     plt.grid(True, 'both')
-    plt.title("Convergence plot")
+    plt.title("Convergence in Space")
     plt.xscale('log')
     plt.xlabel(r"$h$")
-    plt.ylabel(r"$||e_h||_{max}$")
+    plt.ylabel(r"$||e_{h||_{max}$")
     plt.legend()
-    plt.show()
+    plt.savefig('convergence_space.png')
     return 0
 
 def convergence_order_time():
-    M = 100
+    M = 1000
     iter = 5
     lmbda = -1
 
-    central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 10000, 5)
-    hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 1000, 5)
+    hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 2000, 5)
     cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 400, 5)
     cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 400, 5)
     cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 400, 5)
 
-    method_collection = [central_time, hopscotch, cn_implicit_builtin_solver, cn_linearized_1, cn_linearized_2]
-    method_colors = ['b', 'r', 'g', 'cyan', 'deeppink']
-    method_lables = ["Central time", "Hopscotch", "Crank-Nicolson", "Linearized CN, real", "Linearized CN, complex"]
-    number_of_methods = 5
+    method_collection = [hopscotch, cn_implicit_builtin_solver, cn_linearized_1, cn_linearized_2]
+    method_colors = ['b', 'r', 'g', 'cyan']
+    method_lables = ["Hopscotch", "Crank-Nicolson", "Linearized CN, real", "Linearized CN, complex"]
+    number_of_methods = 4
 
-    errors_time = np.zeros((5, iter))
-    k = np.zeros((5, iter))
+    errors_time = np.zeros((number_of_methods, iter))
+    k = np.zeros((number_of_methods, iter))
 
     for method in method_collection:
         method.calculate_analytic()
 
     for i in range(0, iter):
-        central_time.central_time()
+        print(i)
         hopscotch.hopscotch()
         cn_implicit_builtin_solver.cn_implicit_builtin_solver()
         cn_linearized_1.cn_liearized_1()
@@ -401,12 +401,12 @@ def convergence_order_time():
         plt.plot(k[j], np.exp(intercept) * k[j] ** slope, method_colors[j], label=method_lables[j] + r" , order $\approx$" + str(round(slope, 2)))
     plt.yscale('log')
     plt.grid(True, 'both')
-    plt.title("Convergence plot")
+    plt.title("Convergence in Time")
     plt.xscale('log')
     plt.xlabel(r"$h$")
     plt.ylabel(r"$||e_{k}||_{max}$")
     plt.legend()
-    plt.show()
+    plt.savefig('convergence_time.png')
     return 0
 
 
@@ -421,13 +421,13 @@ if __name__ == '__main__':
     # forward_euler.plot()
     # forward_euler.plot_analytic()
 
-    # central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 400, 10000, 5, 'central_time.pkl')
+    # central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 100, 1000, 5, 'central_time.pkl')
     # central_time.central_time()
     # central_time.calculate_analytic()
     # central_time.plot()
     # central_time.plot_analytic()
 
-    # hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], 1, 100, 400, 5, 'hopscotch.pkl')
+    # hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 500, 600, 5, 'hopscotch.pkl')
     # hopscotch.hopscotch()
     # hopscotch.calculate_analytic()
     # hopscotch.plot()
