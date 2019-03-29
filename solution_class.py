@@ -66,20 +66,15 @@ class Nonlin_Schrodinger_Solver:
         return self.analytic_1(x, np.zeros(np.shape(x)))
 
     def analytic_1(self, x, t):
-        """t += 1
-        c = 1
-        y = (x**2) / (4 * t) + 2 * c**2 * np.log(t)
-        return (c) / (np.sqrt(t)) * np.exp(1.0j * y)"""
-
-        # return np.exp(1.0j * (x - t * (self.lmbda + 1)))
-
-        t -= self.T / 2
+        """t -= self.T / 2
         a = 1
         b = 1
         theta = a**2 * b * np.sqrt(2 - b**2) * t
         c = (2 * b**2 * np.cosh(theta) + 2 * 1.0j * b * np.sqrt(2 - b**2) * np.sinh(theta)) / \
             (2 * np.cosh(theta) - np.sqrt(2) * np.sqrt(2 - b**2) * np.cos(a * b * x)) - 1
-        return c * a * np.exp(1.0j * a**2 * t)
+        return c * a * np.exp(1.0j * a**2 * t)"""
+
+        return np.exp(1.0j * (x - t * (self.lmbda + 1)))
 
     def calculate_analytic(self):
         X, T = np.meshgrid(self.xi, self.ti)
@@ -312,10 +307,10 @@ class Nonlin_Schrodinger_Solver:
 
 def convergence_order_space():
     M = 10
-    iter = 8
+    iter = 6
 
     lmbda = -1
-    central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 100000, 5)
+    central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 10000, 5)
     hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 50000, 5)
     cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 5000, 5)
     cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 5000, 5)
@@ -413,14 +408,15 @@ def convergence_order_time():
     plt.savefig('convergence_time.png')
     return 0
 
-def run_time():
-    lmbda = -1
 
-    central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 80, 100000, 5)
-    hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 500, 50000, 5)
-    cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 80, 5000, 5)
-    cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 80, 5000, 5)
-    cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 80, 5000, 5)
+def run_time():
+    lmbda = 2
+
+    central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 140, 10000, 5)
+    hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 140, 4000, 5)
+    cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 126, 600, 5)
+    cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 130, 600, 5)
+    cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 200, 1000, 5)
 
     method_collection = [central_time, hopscotch, cn_implicit_builtin_solver, cn_linearized_1, cn_linearized_2]
     method_colors = ['b', 'r', 'g', 'cyan', 'deeppink']
@@ -469,8 +465,45 @@ def run_time():
     return 0
 
 
+def conservation_of_mass():
+    # Remember to change initial values to the plane-wave solution.
+    lmbda = 2
 
-# Main program:
+    central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 130, 10000, 5)
+    hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 200, 4000, 5)
+    cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 200, 600, 5)
+    cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 200, 600, 5)
+    cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 300, 1000, 5)
+
+    method_collection = [central_time, hopscotch, cn_implicit_builtin_solver, cn_linearized_1, cn_linearized_2]
+    method_lables = ["Central time", "Hopscotch", "Crank-Nicolson", "Linearized CN, real", "Linearized CN, complex"]
+    number_of_methods = 5
+
+    central_time.central_time()
+    hopscotch.hopscotch()
+    cn_implicit_builtin_solver.cn_implicit_builtin_solver()
+    cn_linearized_1.cn_liearized_1()
+    cn_linearized_2.cn_liearized_2()
+
+    for j in range(0, number_of_methods):
+        method_collection[j].calculate_analytic()
+        mass = np.zeros(method_collection[j].N + 1)
+        mass_a = np.zeros(method_collection[j].N + 1)
+        times = method_collection[j].ti
+        h = method_collection[j].h
+        for i in range(0, method_collection[j].N + 1):
+            mass[i] = h * np.linalg.norm(method_collection[j].sol[i], 2)
+            mass_a[i] = h * np.linalg.norm(method_collection[j].exact[i], 2)
+        plt.plot(times[-100:], mass_a[-100:] - mass[-100:], 'k')
+        plt.ylabel(r"$h( \sum |u|^2 - \sum |U|^2)$")
+        plt.xlabel(r"$t$")
+        plt.grid(True)
+        plt.show()
+    return 0
+
+
+
+# Main program for the project:
 # ----------------------------------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
@@ -480,7 +513,7 @@ if __name__ == '__main__':
     # forward_euler.plot()
     # forward_euler.plot_analytic()
 
-    # central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 680, 1000000, 5, 'central_time.pkl')
+    # central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 680, 100000, 5, 'central_time.pkl')
     # central_time.central_time()
     # central_time.calculate_analytic()
     # central_time.plot()
@@ -492,7 +525,7 @@ if __name__ == '__main__':
     # hopscotch.plot()
     # hopscotch.plot_analytic()
 
-    # cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 100, 100, 5, 'cn_implicit.pkl')
+    # cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 200, 200, 5, 'cn_implicit.pkl')
     # cn_implicit_builtin_solver.cn_implicit_builtin_solver()
     # cn_implicit_builtin_solver.calculate_analytic()
     # cn_implicit_builtin_solver.plot()
@@ -516,7 +549,9 @@ if __name__ == '__main__':
     # convergence_order_space()
     # convergence_order_time()
 
-    run_time()
+    # run_time()
+
+    conservation_of_mass()
 
 
 
