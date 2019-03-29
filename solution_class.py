@@ -252,7 +252,7 @@ class Nonlin_Schrodinger_Solver:
                 return np.concatenate((np.real(a - b), np.imag(a - b)), axis=0)
 
             unfolded_U = np.concatenate((np.real(self.sol[i, 0:-1]), np.imag(self.sol[i, 0:-1])), axis=0)
-            opt = optimize.newton_krylov(F, unfolded_U)
+            opt = optimize.newton_krylov(F, unfolded_U, f_tol=1e-7)
             self.sol[i + 1, 0:-1] = opt[0: self.M] + 1.0j * np.real(opt[self.M:])
         self.sol[:, -1] = self.sol[:, 0]
         return 0
@@ -311,7 +311,7 @@ class Nonlin_Schrodinger_Solver:
 
 def convergence_order_space():
     M = 10
-    iter = 6
+    iter = 8
 
     lmbda = -1
     central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 100000, 5)
@@ -353,7 +353,7 @@ def convergence_order_space():
     plt.plot(order_2_h, order_2_e, 'k', label=r"$\mathcal{O}(h^{2})$")
 
     plt.yscale('log')
-    plt.grid(True, 'both')
+    plt.grid(True)
     plt.title("Convergence in Space")
     plt.xscale('log')
     plt.xlabel(r"$h$")
@@ -403,13 +403,17 @@ def convergence_order_time():
     plt.plot(order_2_h, order_2_e, 'k', label=r"$\mathcal{O}(h^{2})$")
 
     plt.yscale('log')
-    plt.grid(True, 'both')
+    plt.grid(True)
     plt.title("Convergence in Time")
     plt.xscale('log')
     plt.xlabel(r"$k$")
     plt.ylabel(r"$||e_{k}||_{max}$")
     plt.legend()
     plt.savefig('convergence_time.png')
+    return 0
+
+def run_time():
+
     return 0
 
 
@@ -424,7 +428,7 @@ if __name__ == '__main__':
     # forward_euler.plot()
     # forward_euler.plot_analytic()
 
-    # central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 100, 1000, 5, 'central_time.pkl')
+    # central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 680, 1000000, 5, 'central_time.pkl')
     # central_time.central_time()
     # central_time.calculate_analytic()
     # central_time.plot()
@@ -457,8 +461,8 @@ if __name__ == '__main__':
     # cn_linearized_2.plot_analytic()
     # cn_linearized_2.animate_solution(True)
 
-    convergence_order_space()
-    # convergence_order_time()
+    # convergence_order_space()
+    convergence_order_time()
 
 
 
