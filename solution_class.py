@@ -1,5 +1,5 @@
-# import matplotlib
-# matplotlib.use('Agg')
+import matplotlib
+matplotlib.use('Agg')
 
 import numpy as np
 import pickle
@@ -10,7 +10,6 @@ from scipy import optimize
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from mpl_toolkits.mplot3d import Axes3D
-from scipy import stats
 
 
 class Nonlin_Schrodinger_Solver:
@@ -188,7 +187,7 @@ class Nonlin_Schrodinger_Solver:
         self.sol[:, -1] = self.sol[:, 0]
         return 0
 
-    # Works, migth be a subtle error in the boundary stuff.
+    # Works.
     # Need even number of space steps.
     def hopscotch(self, iterations=None):
         if iterations == None:
@@ -312,14 +311,14 @@ class Nonlin_Schrodinger_Solver:
 
 def convergence_order_space():
     M = 10
-    iter = 4
+    iter = 6
 
     lmbda = -1
-    central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 10000, 5)
-    hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 1000, 5)
-    cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 400, 5)
-    cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 400, 5)
-    cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 400, 5)
+    central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 100000, 5)
+    hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 50000, 5)
+    cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 5000, 5)
+    cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 5000, 5)
+    cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 5000, 5)
 
     method_collection = [central_time, hopscotch, cn_implicit_builtin_solver, cn_linearized_1, cn_linearized_2]
     method_colors = ['b', 'r', 'g', 'cyan', 'deeppink']
@@ -347,28 +346,31 @@ def convergence_order_space():
             method_collection[j].set_new_params(M)
 
     for j in range(0, number_of_methods):
-        slope, intercept, r_value, p_value, std_err = stats.linregress(np.log(h[j]), np.log(errors_space[j]))
-        plt.plot(h[j], np.exp(intercept) * h[j] ** slope,
-                 method_colors[j], label=method_lables[j] + r" , order $\approx$" + str(round(slope, 2)))
+        plt.plot(h[j], errors_space[j], method_colors[j], label=method_lables[j])
+
+    order_2_h = np.logspace(-2, 0, 100)
+    order_2_e = order_2_h**2
+    plt.plot(order_2_h, order_2_e, 'k', label=r"$\mathcal{O}(h^{2})$")
+
     plt.yscale('log')
     plt.grid(True, 'both')
     plt.title("Convergence in Space")
     plt.xscale('log')
     plt.xlabel(r"$h$")
-    plt.ylabel(r"$||e_{h||_{max}$")
+    plt.ylabel(r"$||e_{h}||_{max}$")
     plt.legend()
     plt.savefig('convergence_space.png')
     return 0
 
 def convergence_order_time():
-    M = 1000
-    iter = 5
+    M = 500
+    iter = 6
     lmbda = -1
 
-    hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 2000, 5)
-    cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 400, 5)
-    cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 400, 5)
-    cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 400, 5)
+    hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 2500, 5)
+    cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 50, 5)
+    cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 50, 5)
+    cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 60, 5)
 
     method_collection = [hopscotch, cn_implicit_builtin_solver, cn_linearized_1, cn_linearized_2]
     method_colors = ['b', 'r', 'g', 'cyan']
@@ -392,18 +394,19 @@ def convergence_order_time():
             errors_time[j, i] = np.max(np.absolute(method_collection[j].exact - method_collection[j].sol))
             method_collection[j].set_new_params(N=(method_collection[j].N * 2))
             k[j, i] = method_collection[j].k
-    print(errors_time)
-    print()
-    print(k)
 
     for j in range(0, number_of_methods):
-        slope, intercept, r_value, p_value, std_err = stats.linregress(np.log(k[j]), np.log(errors_time[j]))
-        plt.plot(k[j], np.exp(intercept) * k[j] ** slope, method_colors[j], label=method_lables[j] + r" , order $\approx$" + str(round(slope, 2)))
+        plt.plot(k[j], errors_time[j], method_colors[j], label=method_lables[j])
+
+    order_2_h = np.logspace(-2, 0, 100)
+    order_2_e = order_2_h**2
+    plt.plot(order_2_h, order_2_e, 'k', label=r"$\mathcal{O}(h^{2})$")
+
     plt.yscale('log')
     plt.grid(True, 'both')
     plt.title("Convergence in Time")
     plt.xscale('log')
-    plt.xlabel(r"$h$")
+    plt.xlabel(r"$k$")
     plt.ylabel(r"$||e_{k}||_{max}$")
     plt.legend()
     plt.savefig('convergence_time.png')
@@ -427,7 +430,7 @@ if __name__ == '__main__':
     # central_time.plot()
     # central_time.plot_analytic()
 
-    # hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 500, 600, 5, 'hopscotch.pkl')
+    # hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 500, 2500, 5, 'hopscotch.pkl')
     # hopscotch.hopscotch()
     # hopscotch.calculate_analytic()
     # hopscotch.plot()
@@ -440,21 +443,22 @@ if __name__ == '__main__':
     # cn_implicit_builtin_solver.plot_analytic()
     # cn_implicit_builtin_solver.animate_solution(True)
 
-    # cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 200, 200, 5, 'cn_linearized.pkl')
+    # cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 500, 50, 5, 'cn_linearized.pkl')
     # cn_linearized_1.cn_liearized_1()
     # cn_linearized_1.calculate_analytic()
     # cn_linearized_1.plot()
     # cn_linearized_1.plot_analytic()
     # cn_linearized_1.animate_solution(True)
 
-    # cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -2, 200, 200, 5, 'cn_linearized.pkl')
+    # cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 500, 60, 5, 'cn_linearized.pkl')
     # cn_linearized_2.cn_liearized_2()
     # cn_linearized_2.calculate_analytic()
     # cn_linearized_2.plot()
     # cn_linearized_2.plot_analytic()
     # cn_linearized_2.animate_solution(True)
 
-    convergence_order_time()
+    convergence_order_space()
+    # convergence_order_time()
 
 
 
