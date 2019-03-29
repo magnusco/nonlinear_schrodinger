@@ -1,6 +1,7 @@
-import matplotlib
-matplotlib.use('Agg')
+# import matplotlib
+# matplotlib.use('Agg')
 
+import time
 import numpy as np
 import pickle
 import math as m
@@ -413,7 +414,58 @@ def convergence_order_time():
     return 0
 
 def run_time():
+    lmbda = -1
 
+    central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 80, 100000, 5)
+    hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 500, 50000, 5)
+    cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 80, 5000, 5)
+    cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 80, 5000, 5)
+    cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 80, 5000, 5)
+
+    method_collection = [central_time, hopscotch, cn_implicit_builtin_solver, cn_linearized_1, cn_linearized_2]
+    method_colors = ['b', 'r', 'g', 'cyan', 'deeppink']
+    method_lables = ["Central time", "Hopscotch", "Crank-Nicolson", "Linearized CN, real", "Linearized CN, complex"]
+    number_of_methods = 5
+
+    for method in method_collection:
+        method.calculate_analytic()
+
+    times = np.zeros(number_of_methods)
+    errors = np.zeros(number_of_methods)
+
+    start_time = time.time()
+    central_time.central_time()
+    times[0] = time.time() - start_time
+    errors[0] = np.max(np.absolute(central_time.exact - central_time.sol))
+    print(1)
+
+    start_time = time.time()
+    hopscotch.hopscotch()
+    times[1] = time.time() - start_time
+    errors[1] = np.max(np.absolute(hopscotch.exact - hopscotch.sol))
+    print(2)
+
+    start_time = time.time()
+    cn_implicit_builtin_solver.cn_implicit_builtin_solver()
+    times[2] = time.time() - start_time
+    errors[2] = np.max(np.absolute(cn_implicit_builtin_solver.exact - cn_implicit_builtin_solver.sol))
+    print(3)
+
+    start_time = time.time()
+    cn_linearized_1.cn_liearized_1()
+    times[3] = time.time() - start_time
+    errors[3] = np.max(np.absolute(cn_linearized_1.exact - cn_linearized_1.sol))
+    print(4)
+
+    start_time = time.time()
+    cn_linearized_2.cn_liearized_2()
+    times[4] = time.time() - start_time
+    errors[4] = np.max(np.absolute(cn_linearized_2.exact - cn_linearized_2.sol))
+    print(5)
+
+    print(times)
+    print()
+    print(errors)
     return 0
 
 
@@ -462,7 +514,9 @@ if __name__ == '__main__':
     # cn_linearized_2.animate_solution(True)
 
     # convergence_order_space()
-    convergence_order_time()
+    # convergence_order_time()
+
+    run_time()
 
 
 
