@@ -97,12 +97,14 @@ class NSE:
 
     def plot_analytic(self):
         self.plot_solution(np.real(self.exact), self.xi, self.ti, "Real Part of Analytic Solution")
-        self.plot_solution(np.imag(self.sol), self.xi, self.ti, "Imaginary Part of Analytic Solution")
+        self.plot_solution(np.imag(self.exact), self.xi, self.ti, "Imaginary Part of Analytic Solution")
+        self.plot_solution(np.absolute(self.exact), self.xi, self.ti, "Absolute Value of Analytic Solution")
         return 0
 
     def plot(self):
         self.plot_solution(np.real(self.sol), self.xi, self.ti, "Real Part of Numerical Solution")
         self.plot_solution(np.imag(self.sol), self.xi, self.ti, "Imaginary value of solution")
+        self.plot_solution(np.absolute(self.sol), self.xi, self.ti, "Absolute Value of Numerical Solution")
         return 0
 
     def plot_2D_final(self):
@@ -559,4 +561,4 @@ if __name__ == '__main__':
 
     # run_time(exact_2, -1)
 
-    # conservation_of_mass(exact_1, 2)
+    conservation_of_mass(exact_1, 2)
