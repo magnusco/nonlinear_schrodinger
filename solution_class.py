@@ -13,9 +13,9 @@ from matplotlib import animation
 from mpl_toolkits.mplot3d import Axes3D
 
 
-class Nonlin_Schrodinger_Solver:
+class NSE:
 
-    def __init__(self, interval, lmbda, M, N, T, filename=""):
+    def __init__(self, interval, lmbda, M, N, T, analytic=None, initial=None, filename="saved_solution"):
         self.space = interval
         self.lmbda = lmbda
         self.M = M
@@ -29,6 +29,9 @@ class Nonlin_Schrodinger_Solver:
         self.sol = np.zeros((self.N + 1, self.M + 1), dtype=np.complex)
         self.filename = filename
         self.exact = np.zeros((self.N + 1, self.M + 1), dtype=np.complex)
+        self.analytic_expr = analytic
+        self.initial_expr = initial
+
 
     # Functions:
     # ------------------------------------------------------------------------------------------------------------------
@@ -62,23 +65,21 @@ class Nonlin_Schrodinger_Solver:
         e = np.ones(n)
         return a * np.diag(e[1:], -1) + b * np.diag(e) + c * np.diag(e[1:], 1)
 
-    def f(self, x):
-        return self.analytic_1(x, np.zeros(np.shape(x)))
+    def initial(self, x):
+        if self.initial_expr != None:
+            return self.initial_expr(x, self.lmbda)
+        else:
+            return self.analytic(x, np.zeros(np.shape(x)))
 
-    def analytic_1(self, x, t):
-        """t -= self.T / 2
-        a = 1
-        b = 1
-        theta = a**2 * b * np.sqrt(2 - b**2) * t
-        c = (2 * b**2 * np.cosh(theta) + 2 * 1.0j * b * np.sqrt(2 - b**2) * np.sinh(theta)) / \
-            (2 * np.cosh(theta) - np.sqrt(2) * np.sqrt(2 - b**2) * np.cos(a * b * x)) - 1
-        return c * a * np.exp(1.0j * a**2 * t)"""
-
-        return np.exp(1.0j * (x - t * (self.lmbda + 1)))
+    def analytic(self, x, t):
+        if self.analytic_expr != None:
+            return self.analytic_expr(x, t, self.lmbda)
+        else:
+            return 0
 
     def calculate_analytic(self):
         X, T = np.meshgrid(self.xi, self.ti)
-        self.exact = self.analytic_1(X, T)
+        self.exact = self.analytic(X, T)
         return 0
 
     def plot_solution(self, sol, xi, ti, title=None):
@@ -96,12 +97,12 @@ class Nonlin_Schrodinger_Solver:
 
     def plot_analytic(self):
         self.plot_solution(np.real(self.exact), self.xi, self.ti, "Real Part of Analytic Solution")
-        #self.plot_solution(np.imag(sol), self.xi, self.ti, "Imaginary Part of Analytic Solution")
+        self.plot_solution(np.imag(self.sol), self.xi, self.ti, "Imaginary Part of Analytic Solution")
         return 0
 
     def plot(self):
         self.plot_solution(np.real(self.sol), self.xi, self.ti, "Real Part of Numerical Solution")
-        #self.plot_solution(np.imag(self.sol), self.xi, self.ti, "Imaginary value of solution")
+        self.plot_solution(np.imag(self.sol), self.xi, self.ti, "Imaginary value of solution")
         return 0
 
     def plot_2D_final(self):
@@ -115,7 +116,7 @@ class Nonlin_Schrodinger_Solver:
 
     def animate_solution(self, exact=False):
         fig = plt.figure()
-        ax = plt.axes(xlim=(self.space[0], self.space[1]), ylim=(-2, 2))
+        ax = plt.axes(xlim=(self.space[0], self.space[1]), ylim=(-1, 3))
         if exact == True:
             line_1, = ax.plot([], [], 'b', lw=2, label="numerical")
             line_2, = ax.plot([], [], 'r', lw=2, label="exact")
@@ -124,8 +125,8 @@ class Nonlin_Schrodinger_Solver:
                 line_2.set_data([], [])
                 return line_1, line_2,
             def animate(i):
-                line_1.set_data(self.xi, np.real(self.sol[i]))
-                line_2.set_data(self.xi, np.real(self.exact[i]))
+                line_1.set_data(self.xi, np.absolute(self.sol[i]))
+                line_2.set_data(self.xi, np.absolute(self.exact[i]))
                 return line_1, line_2,
 
             anim = animation.FuncAnimation(fig, animate, init_func=init,
@@ -136,13 +137,13 @@ class Nonlin_Schrodinger_Solver:
                 line.set_data([], [])
                 return line,
             def animate(i):
-                line.set_data(self.xi, self.sol[i])
+                line.set_data(self.xi, np.absolute(self.sol[i]))
                 return line,
             anim = animation.FuncAnimation(fig, animate, init_func=init,
                                            frames=self.N, interval=10, blit=True)
 
         plt.xlabel(r"$x$")
-        plt.ylabel(r"$Re(U)$")
+        plt.ylabel(r"$|U|$")
         plt.legend()
         plt.show()
         return 0
@@ -154,7 +155,7 @@ class Nonlin_Schrodinger_Solver:
     def forward_euler(self, iterations=None):
         if iterations == None:
             iterations = self.N
-        self.sol[0, :] = self.f(self.xi)
+        self.sol[0, :] = self.initial(self.xi)
         B_const = self.tridiag(1, -2, 1, self.M)
         B_const[0, -1] = 1
         B_const[-1, 0] = 1
@@ -169,7 +170,7 @@ class Nonlin_Schrodinger_Solver:
 
     # Should work.
     def central_time(self):
-        self.sol[0, :] = self.f(self.xi)
+        self.sol[0, :] = self.initial(self.xi)
         self.cn_implicit_builtin_solver(1)
         B_const = self.tridiag(1, -2, 1, self.M)
         B_const[0, -1] = 1
@@ -189,7 +190,7 @@ class Nonlin_Schrodinger_Solver:
         if iterations == None:
             iterations = self.N
 
-        self.sol[0, :] = self.f(self.xi)
+        self.sol[0, :] = self.initial(self.xi)
         B_const = self.tridiag(1.0j * self.r, 1 - 2 * 1.0j * self.r, 1.0j * self.r, self.M)
         B_const[0, -1] = 1.0j * self.r
         B_const[-1, 0] = 1.0j * self.r
@@ -225,7 +226,7 @@ class Nonlin_Schrodinger_Solver:
     def cn_implicit_builtin_solver(self, iterations=None):
         if iterations == None:
             iterations = self.N
-        self.sol[0, :] = self.f(self.xi)
+        self.sol[0, :] = self.initial(self.xi)
         A_const = self.tridiag(self.r / 2, 1.0j - self.r, self.r / 2, self.M)
         B_const = self.tridiag(- self.r / 2, 1.0j + self.r, - self.r / 2, self.M)
         A_const[0, -1] = self.r / 2
@@ -255,7 +256,7 @@ class Nonlin_Schrodinger_Solver:
 
     # Works.
     def cn_liearized_1(self):
-        self.sol[0, :] = self.f(self.xi)
+        self.sol[0, :] = self.initial(self.xi)
         self.cn_implicit_builtin_solver(1)
         A_const = self.tridiag(self.r / 2, 1.0j - self.r, self.r / 2, self.M)
         B_const = self.tridiag(- self.r / 2, 1.0j + self.r, - self.r / 2, self.M)
@@ -280,7 +281,7 @@ class Nonlin_Schrodinger_Solver:
 
     # Works.
     def cn_liearized_2(self):
-        self.sol[0, :] = self.f(self.xi)
+        self.sol[0, :] = self.initial(self.xi)
         self.cn_implicit_builtin_solver(1)
         A = self.tridiag(self.r / 2, 1.0j - self.r, self.r / 2, self.M)
         B_const = self.tridiag(- self.r / 2, 1.0j + self.r, - self.r / 2, self.M)
@@ -305,16 +306,15 @@ class Nonlin_Schrodinger_Solver:
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-def convergence_order_space():
+def convergence_order_space(analytic, lmbda):
     M = 10
     iter = 6
 
-    lmbda = -1
-    central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 10000, 5)
-    hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 50000, 5)
-    cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 5000, 5)
-    cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 5000, 5)
-    cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 5000, 5)
+    central_time = NSE([-np.pi, np.pi], lmbda, M, 10000, 5, analytic=analytic)
+    hopscotch = NSE([-np.pi, np.pi], lmbda, M, 50000, 5, analytic=analytic)
+    cn_implicit_builtin_solver = NSE([-np.pi, np.pi], lmbda, M, 5000, 5, analytic=analytic)
+    cn_linearized_1 = NSE([-np.pi, np.pi], lmbda, M, 5000, 5, analytic=analytic)
+    cn_linearized_2 = NSE([-np.pi, np.pi], lmbda, M, 5000, 5, analytic=analytic)
 
     method_collection = [central_time, hopscotch, cn_implicit_builtin_solver, cn_linearized_1, cn_linearized_2]
     method_colors = ['b', 'r', 'g', 'cyan', 'deeppink']
@@ -358,15 +358,14 @@ def convergence_order_space():
     plt.savefig('convergence_space.png')
     return 0
 
-def convergence_order_time():
+def convergence_order_time(analytic, lmbda):
     M = 500
     iter = 6
-    lmbda = -1
 
-    hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 2500, 5)
-    cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 50, 5)
-    cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 50, 5)
-    cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, M, 60, 5)
+    hopscotch = NSE([-np.pi, np.pi], lmbda, M, 2500, 5, analytic=analytic)
+    cn_implicit_builtin_solver = NSE([-np.pi, np.pi], lmbda, M, 50, 5, analytic=analytic)
+    cn_linearized_1 = NSE([-np.pi, np.pi], lmbda, M, 50, 5, analytic=analytic)
+    cn_linearized_2 = NSE([-np.pi, np.pi], lmbda, M, 60, 5, analytic=analytic)
 
     method_collection = [hopscotch, cn_implicit_builtin_solver, cn_linearized_1, cn_linearized_2]
     method_colors = ['b', 'r', 'g', 'cyan']
@@ -409,14 +408,13 @@ def convergence_order_time():
     return 0
 
 
-def run_time():
-    lmbda = 2
+def run_time(analytic, lmbda):
 
-    central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 140, 10000, 5)
-    hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 140, 4000, 5)
-    cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 126, 600, 5)
-    cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 130, 600, 5)
-    cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 200, 1000, 5)
+    central_time = NSE([-np.pi, np.pi], lmbda, 140, 10000, 5, analytic=analytic)
+    hopscotch = NSE([-np.pi, np.pi], lmbda, 140, 4000, 5, analytic=analytic)
+    cn_implicit_builtin_solver = NSE([-np.pi, np.pi], lmbda, 126, 600, 5, analytic=analytic)
+    cn_linearized_1 = NSE([-np.pi, np.pi], lmbda, 130, 600, 5, analytic=analytic)
+    cn_linearized_2 = NSE([-np.pi, np.pi], lmbda, 200, 1000, 5, analytic=analytic)
 
     method_collection = [central_time, hopscotch, cn_implicit_builtin_solver, cn_linearized_1, cn_linearized_2]
     method_colors = ['b', 'r', 'g', 'cyan', 'deeppink']
@@ -433,47 +431,41 @@ def run_time():
     central_time.central_time()
     times[0] = time.time() - start_time
     errors[0] = np.max(np.absolute(central_time.exact - central_time.sol))
-    print(1)
 
     start_time = time.time()
     hopscotch.hopscotch()
     times[1] = time.time() - start_time
     errors[1] = np.max(np.absolute(hopscotch.exact - hopscotch.sol))
-    print(2)
 
     start_time = time.time()
     cn_implicit_builtin_solver.cn_implicit_builtin_solver()
     times[2] = time.time() - start_time
     errors[2] = np.max(np.absolute(cn_implicit_builtin_solver.exact - cn_implicit_builtin_solver.sol))
-    print(3)
 
     start_time = time.time()
     cn_linearized_1.cn_liearized_1()
     times[3] = time.time() - start_time
     errors[3] = np.max(np.absolute(cn_linearized_1.exact - cn_linearized_1.sol))
-    print(4)
 
     start_time = time.time()
     cn_linearized_2.cn_liearized_2()
     times[4] = time.time() - start_time
     errors[4] = np.max(np.absolute(cn_linearized_2.exact - cn_linearized_2.sol))
-    print(5)
 
+    print("Running-times:")
     print(times)
     print()
+    print("Corresponding errors:")
     print(errors)
     return 0
 
 
-def conservation_of_mass():
-    # Remember to change initial values to the plane-wave solution.
-    lmbda = 2
-
-    central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 130, 10000, 5)
-    hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 200, 4000, 5)
-    cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 200, 600, 5)
-    cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 200, 600, 5)
-    cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], lmbda, 300, 1000, 5)
+def conservation_of_mass(analytic, lmbda):
+    central_time = NSE([-np.pi, np.pi], lmbda, 130, 10000, 5, analytic=analytic)
+    hopscotch = NSE([-np.pi, np.pi], lmbda, 200, 4000, 5, analytic=analytic)
+    cn_implicit_builtin_solver = NSE([-np.pi, np.pi], lmbda, 200, 600, 5, analytic=analytic)
+    cn_linearized_1 = NSE([-np.pi, np.pi], lmbda, 200, 600, 5, analytic=analytic)
+    cn_linearized_2 = NSE([-np.pi, np.pi], lmbda, 300, 1000, 5, analytic=analytic)
 
     method_collection = [central_time, hopscotch, cn_implicit_builtin_solver, cn_linearized_1, cn_linearized_2]
     method_lables = ["Central time", "Hopscotch", "Crank-Nicolson", "Linearized CN, real", "Linearized CN, complex"]
@@ -507,51 +499,64 @@ def conservation_of_mass():
 # ----------------------------------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    # forward_euler = Nonlin_Schrodinger_Solver([-np.pi, np.pi], 2, 10, 10000, 5, 'forward_euler.pkl')
+
+
+    def exact_1(x, t, lmbda):
+        return np.exp(1.0j * (x - t * (lmbda + 1)))
+
+    def exact_2(x, t, lmbda):
+        T = 5
+        t -= T / 2
+        a = 1
+        b = 1
+        theta = a**2 * b * np.sqrt(2 - b**2) * t
+        c = (2 * b**2 * np.cosh(theta) + 2 * 1.0j * b * np.sqrt(2 - b**2) * np.sinh(theta)) / \
+            (2 * np.cosh(theta) - np.sqrt(2) * np.sqrt(2 - b**2) * np.cos(a * b * x)) - 1
+        return c * a * np.exp(1.0j * a**2 * t)
+
+
+    # forward_euler = NSE([-np.pi, np.pi], -1, 100, 10000, 5, analytic=exact_2, filename='forward_euler.pkl')
     # forward_euler.forward_euler()
     # forward_euler.calculate_analytic()
     # forward_euler.plot()
     # forward_euler.plot_analytic()
 
-    # central_time = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 680, 100000, 5, 'central_time.pkl')
+    # central_time = NSE([-np.pi, np.pi], -1, 200, 5000, 5, analytic=exact_2, filename='central_time.pkl')
     # central_time.central_time()
     # central_time.calculate_analytic()
     # central_time.plot()
     # central_time.plot_analytic()
 
-    # hopscotch = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 500, 2500, 5, 'hopscotch.pkl')
+    # hopscotch = NSE([-np.pi, np.pi], -1, 200, 400, 5, analytic=exact_2, filename='hopscotch.pkl')
     # hopscotch.hopscotch()
     # hopscotch.calculate_analytic()
     # hopscotch.plot()
     # hopscotch.plot_analytic()
 
-    # cn_implicit_builtin_solver = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 200, 200, 5, 'cn_implicit.pkl')
+    # cn_implicit_builtin_solver = NSE([-np.pi, np.pi], -1, 200, 200, 5, analytic=exact_2, filename='cn_implicit.pkl')
     # cn_implicit_builtin_solver.cn_implicit_builtin_solver()
     # cn_implicit_builtin_solver.calculate_analytic()
     # cn_implicit_builtin_solver.plot()
     # cn_implicit_builtin_solver.plot_analytic()
     # cn_implicit_builtin_solver.animate_solution(True)
 
-    # cn_linearized_1 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 500, 50, 5, 'cn_linearized.pkl')
+    # cn_linearized_1 = NSE([-np.pi, np.pi], -1, 200, 200, 5, analytic=exact_2, filename='cn_linearized.pkl')
     # cn_linearized_1.cn_liearized_1()
     # cn_linearized_1.calculate_analytic()
     # cn_linearized_1.plot()
     # cn_linearized_1.plot_analytic()
     # cn_linearized_1.animate_solution(True)
 
-    # cn_linearized_2 = Nonlin_Schrodinger_Solver([-np.pi, np.pi], -1, 500, 60, 5, 'cn_linearized.pkl')
+    # cn_linearized_2 = NSE([-np.pi, np.pi], -1, 200, 200, 5, analytic=exact_2, filename='cn_linearized.pkl')
     # cn_linearized_2.cn_liearized_2()
     # cn_linearized_2.calculate_analytic()
     # cn_linearized_2.plot()
     # cn_linearized_2.plot_analytic()
     # cn_linearized_2.animate_solution(True)
 
-    # convergence_order_space()
-    # convergence_order_time()
+    # convergence_order_space(exact_2, -1)
+    # convergence_order_time(exact_2, -1)
 
-    # run_time()
+    # run_time(exact_2, -1)
 
-    conservation_of_mass()
-
-
-
+    # conservation_of_mass(exact_1, 2)
