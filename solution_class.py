@@ -395,9 +395,9 @@ def convergence_order_time(analytic, lmbda):
     for j in range(0, number_of_methods):
         plt.plot(k[j], errors_time[j], method_colors[j], label=method_lables[j])
 
-    order_2_h = np.logspace(-2, 0, 100)
-    order_2_e = order_2_h**2
-    plt.plot(order_2_h, order_2_e, 'k', label=r"$\mathcal{O}(h^{2})$")
+    order_2_k = np.logspace(-2, 0, 100)
+    order_2_e = order_2_k**2
+    plt.plot(order_2_k, order_2_e, 'k', label=r"$\mathcal{O}(k^{2})$")
 
     plt.yscale('log')
     plt.grid(True)
@@ -488,14 +488,13 @@ def conservation_of_mass(analytic, lmbda):
         for i in range(0, method_collection[j].N + 1):
             mass[i] = h * np.linalg.norm(method_collection[j].sol[i], 2)
             mass_a[i] = h * np.linalg.norm(method_collection[j].exact[i], 2)
-        plt.plot(times[-100:], mass_a[-100:] - mass[-100:], 'k')
+        plt.plot(times[::10], mass_a[::10] - mass[::10], 'k')
         plt.ticklabel_format(style="sci", scilimits=(0, 0))
         plt.ylabel(r"$h( \sum |u|^2 - \sum |U|^2)$")
         plt.xlabel(r"$t$")
         plt.grid(True)
         plt.show()
     return 0
-
 
 
 # Main program for the project:
@@ -543,12 +542,12 @@ if __name__ == '__main__':
     # cn_implicit_builtin_solver.plot_analytic()
     # cn_implicit_builtin_solver.animate_solution(True)
 
-    # cn_linearized_1 = NSE([-np.pi, np.pi], -1, 200, 200, 5, analytic=exact_2, filename='cn_linearized.pkl')
-    # cn_linearized_1.cn_liearized_1()
-    # cn_linearized_1.calculate_analytic()
-    # cn_linearized_1.plot()
-    # cn_linearized_1.plot_analytic()
-    # cn_linearized_1.animate_solution(True)
+    cn_linearized_1 = NSE([-np.pi, np.pi], -1, 200, 400, 5, analytic=exact_2, filename='cn_linearized.pkl')
+    cn_linearized_1.cn_liearized_1()
+    cn_linearized_1.calculate_analytic()
+    cn_linearized_1.plot()
+    cn_linearized_1.plot_analytic()
+    cn_linearized_1.animate_solution(True)
 
     # cn_linearized_2 = NSE([-np.pi, np.pi], -1, 200, 200, 5, analytic=exact_2, filename='cn_linearized.pkl')
     # cn_linearized_2.cn_liearized_2()
@@ -562,4 +561,4 @@ if __name__ == '__main__':
 
     # run_time(exact_2, -1)
 
-    conservation_of_mass(exact_1, 2)
+    # conservation_of_mass(exact_1, 2)
