@@ -489,6 +489,7 @@ def conservation_of_mass(analytic, lmbda):
             mass[i] = h * np.linalg.norm(method_collection[j].sol[i], 2)
             mass_a[i] = h * np.linalg.norm(method_collection[j].exact[i], 2)
         plt.plot(times[-100:], mass_a[-100:] - mass[-100:], 'k')
+        plt.ticklabel_format(style="sci", scilimits=(0, 0))
         plt.ylabel(r"$h( \sum |u|^2 - \sum |U|^2)$")
         plt.xlabel(r"$t$")
         plt.grid(True)
