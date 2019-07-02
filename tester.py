@@ -1,5 +1,8 @@
-if __name__ == '__main__':
+import numpy as np
+from solution_class import NSE
 
+
+if __name__ == '__main__':
 
     def exact_1(x, t, lmbda):
         return np.exp(1.0j * (x - t * (lmbda + 1)))
@@ -58,5 +61,3 @@ if __name__ == '__main__':
     # convergence_order_time(exact_2, -1)
 
     # run_time(exact_2, -1)
-
-    conservation_of_mass(exact_1, 2)

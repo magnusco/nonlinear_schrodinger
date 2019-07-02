@@ -1,0 +1,8 @@
+numpy
+pickle
+math
+scipy.sparse
+scipy.optimize
+matplotlib.pyplot
+matplotlib.animation
+mpl_toolkits.mplot3d.Axes3D
